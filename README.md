@@ -22,7 +22,11 @@ An automated multi-wallet bot built for the **Pharos Testnet**, designed to help
 
 ````markdown
 git clone https://github.com/cryptodai3/Pharos-Testnet-Multi-Bot.git
+````
+````
 cd Pharos-Testnet-Multi-Bot
+````
+````
 npm install
 ````
 # Setup Instructions ⚙️
