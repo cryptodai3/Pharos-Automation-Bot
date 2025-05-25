@@ -16,6 +16,18 @@ const colors = {
   bold: '\x1b[1m',
 };
 
+const logger = {
+  info: (msg) => console.log(`${colors.green}[✓] ${msg}${colors.reset}`),
+  wallet: (msg) => console.log(`${colors.yellow}[➤] ${msg}${colors.reset}`),
+  warn: (msg) => console.log(`${colors.yellow}[!] ${msg}${colors.reset}`),
+  error: (msg) => console.log(`${colors.red}[✗] ${msg}${colors.reset}`),
+  success: (msg) => console.log(`${colors.green}[+] ${msg}${colors.reset}`),
+  loading: (msg) => console.log(`${colors.cyan}[⟳] ${msg}${colors.reset}`),
+  step: (msg) => console.log(`${colors.white}[➤] ${msg}${colors.reset}`),
+  user: (msg) => console.log(`\n${colors.white}[➤] ${msg}${colors.reset}`),
+};
+
+// ---- BANNER ----
 const asciiBannerLines = [
   "██████╗     ██╗  ██╗     █████╗     ██████╗      ██████╗     ███████╗",
   "██╔══██╗    ██║  ██║    ██╔══██╗    ██╔══██╗    ██╔═══██╗    ██╔════╝",
