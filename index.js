@@ -774,10 +774,9 @@ const main = async () => {
 
   const proxies = loadProxies();
   const privateKeys = Object.keys(process.env)
-  .filter(key => key.startsWith('PRIVATE_KEY_'))
-  .map(key => process.env[key].trim())
-  .filter(Boolean);
-  }
+    .filter(key => key.startsWith('PRIVATE_KEY_'))
+    .map(key => process.env[key].trim())
+    .filter(Boolean);
 
   const numTransfers = 10;
   const numWraps = 10;
@@ -800,6 +799,9 @@ const main = async () => {
       } else {
         logger.error('Skipping user info fetch due to failed check-in');
       }
+    }
+  }
+};
 
       console.log(`\n${colors.cyan}------------------------${colors.reset}`);
       console.log(`${colors.cyan}TRANSFERS${colors.reset}`);
