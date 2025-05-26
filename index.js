@@ -532,7 +532,7 @@ const claimFaucet = async (wallet, proxy = null) => {
     const signature = await wallet.signMessage(message);
     logger.step(`Signed message: ${signature}`);
 
-    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=S6NGMzXSCDBxhnwo`;
+    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=8G8MJ3zGE5B7tJgP`;
     const headers = {
       accept: "application/json, text/plain, */*",
       "accept-language": "en-US,en;q=0.8",
@@ -625,7 +625,7 @@ const performCheckIn = async (wallet, proxy = null) => {
     const signature = await wallet.signMessage(message);
     logger.step(`Signed message: ${signature}`);
 
-    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=S6NGMzXSCDBxhnwo`;
+    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=8G8MJ3zGE5B7tJgP`;
     const headers = {
       accept: "application/json, text/plain, */*",
       "accept-language": "en-US,en;q=0.8",
@@ -798,7 +798,7 @@ const main = async () => {
   logger.info(`Delay between cycles set to ${delayMinutes} minutes`);
 
   const proxies = loadProxies();
-  const privateKeys = [process.env.PRIVATE_KEY_1, process.env.PRIVATE_KEY_2].filter(pk => pk);
+   const privateKeys = [process.env.PRIVATE_KEY_1, process.env.PRIVATE_KEY_2, process.env.PRIVATE_KEY_3, process.env.PRIVATE_KEY_4, process.env.PRIVATE_KEY_5, process.env.PRIVATE_KEY_6, process.env.PRIVATE_KEY_7, process.env.PRIVATE_KEY_8, process.env.PRIVATE_KEY_9, process.env.PRIVATE_KEY_10].filter(pk => pk);
   if (!privateKeys.length) {
     logger.error('No private keys found in .env');
     return;
