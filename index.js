@@ -35,7 +35,7 @@ const logger = {
       "██║         ██║  ██║    ██║  ██║    ██║  ██║    ╚██████╔╝    ███████║",
       "╚═╝         ╚═╝  ╚═╝    ╚═╝  ╚═╝    ╚═╝  ╚═╝     ╚═════╝     ╚══════╝",
       "",
-      "       Pharos Testnet Multi Bot v2.0 - Created By CryptoDai3       ",
+      "       Pharos Testnet Multi Bot v2.2 - Created By CryptoDai3       ",
       "                🌱 Stay consistent, stay curious                   ",
     ];
 
@@ -180,6 +180,31 @@ const setupProvider = (proxy = null) => {
   }
 };
 
+const waitForTransactionWithRetry = async (provider, txHash, maxRetries = 5, baseDelayMs = 1000) => {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const receipt = await provider.getTransactionReceipt(txHash);
+      if (receipt) {
+        return receipt;
+      }
+      logger.warn(`Transaction receipt not found for ${txHash}, retrying (${retries + 1}/${maxRetries})...`);
+      await new Promise(resolve => setTimeout(resolve, baseDelayMs * Math.pow(2, retries)));
+      retries++;
+    } catch (error) {
+      logger.error(`Error fetching transaction receipt for ${txHash}: ${error.message}`);
+      if (error.code === -32008) {
+        logger.warn(`RPC error -32008, retrying (${retries + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, baseDelayMs * Math.pow(2, retries)));
+        retries++;
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error(`Failed to get transaction receipt for ${txHash} after ${maxRetries} retries`);
+};
+
 const checkBalanceAndApproval = async (wallet, tokenAddress, amount, decimals, spender) => {
   try {
     const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, wallet);
@@ -207,7 +232,7 @@ const checkBalanceAndApproval = async (wallet, tokenAddress, amount, decimals, s
         maxFeePerGas: feeData.maxFeePerGas || undefined,
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || undefined,
       });
-      await approveTx.wait();
+      const receipt = await waitForTransactionWithRetry(wallet.provider, approveTx.hash);
       logger.success('Approval completed');
     }
 
@@ -390,7 +415,7 @@ const performSwap = async (wallet, provider, index, jwt, proxy) => {
     });
 
     logger.loading(`Swap transaction ${index + 1} sent, waiting for confirmation...`);
-    const receipt = await tx.wait();
+    const receipt = await waitForTransactionWithRetry(provider, tx.hash);
     logger.success(`Swap ${index + 1} completed: ${receipt.hash}`);
     logger.step(`Explorer: https://testnet.pharosscan.xyz/tx/${receipt.hash}`);
 
@@ -433,7 +458,7 @@ const transferPHRS = async (wallet, provider, index, jwt, proxy) => {
     });
 
     logger.loading(`Transfer transaction ${index + 1} sent, waiting for confirmation...`);
-    const receipt = await tx.wait();
+    const receipt = await waitForTransactionWithRetry(provider, tx.hash);
     logger.success(`Transfer ${index + 1} completed: ${receipt.hash}`);
     logger.step(`Explorer: https://testnet.pharosscan.xyz/tx/${receipt.hash}`);
 
@@ -483,7 +508,7 @@ const wrapPHRS = async (wallet, provider, index, jwt, proxy) => {
     });
 
     logger.loading(`Wrap transaction ${index + 1} sent, waiting for confirmation...`);
-    const receipt = await tx.wait();
+    const receipt = await waitForTransactionWithRetry(provider, tx.hash);
     logger.success(`Wrap ${index + 1} completed: ${receipt.hash}`);
     logger.step(`Explorer: https://testnet.pharosscan.xyz/tx/${receipt.hash}`);
 
@@ -507,7 +532,7 @@ const claimFaucet = async (wallet, proxy = null) => {
     const signature = await wallet.signMessage(message);
     logger.step(`Signed message: ${signature}`);
 
-    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=8G8MJ3zGE5B7tJgP`;
+    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=S6NGMzXSCDBxhnwo`;
     const headers = {
       accept: "application/json, text/plain, */*",
       "accept-language": "en-US,en;q=0.8",
@@ -600,7 +625,7 @@ const performCheckIn = async (wallet, proxy = null) => {
     const signature = await wallet.signMessage(message);
     logger.step(`Signed message: ${signature}`);
 
-    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=8G8MJ3zGE5B7tJgP`;
+    const loginUrl = `https://api.pharosnetwork.xyz/user/login?address=${wallet.address}&signature=${signature}&invite_code=S6NGMzXSCDBxhnwo`;
     const headers = {
       accept: "application/json, text/plain, */*",
       "accept-language": "en-US,en;q=0.8",
@@ -724,7 +749,7 @@ const addLiquidity = async (wallet, provider, index, jwt, proxy) => {
     });
 
     logger.loading(`Liquidity Add ${index + 1} sent, waiting for confirmation...`);
-    const receipt = await tx.wait();
+    const receipt = await waitForTransactionWithRetry(provider, tx.hash);
     logger.success(`Liquidity Add ${index + 1} completed: ${receipt.hash}`);
     logger.step(`Explorer: https://testnet.pharosscan.xyz/tx/${receipt.hash}`);
 
@@ -773,7 +798,7 @@ const main = async () => {
   logger.info(`Delay between cycles set to ${delayMinutes} minutes`);
 
   const proxies = loadProxies();
-  const privateKeys = [process.env.PRIVATE_KEY_1, process.env.PRIVATE_KEY_2, process.env.PRIVATE_KEY_3, process.env.PRIVATE_KEY_4, process.env.PRIVATE_KEY_5, process.env.PRIVATE_KEY_6, process.env.PRIVATE_KEY_7, process.env.PRIVATE_KEY_8, process.env.PRIVATE_KEY_9, process.env.PRIVATE_KEY_10].filter(pk => pk);
+  const privateKeys = [process.env.PRIVATE_KEY_1, process.env.PRIVATE_KEY_2].filter(pk => pk);
   if (!privateKeys.length) {
     logger.error('No private keys found in .env');
     return;
