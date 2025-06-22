@@ -1,172 +1,188 @@
-# 🌌 Pharos Testnet Multi-Bot
+# ⚙️ Pharos Automation BOT (Multi-Module)
 
-An automated multi-wallet bot built for the **Pharos Testnet**, designed to help you consistently interact with the network and potentially qualify for airdrops through regular activity.
+A one-stop automation suite for the **Pharos Testnet** and its expanding ecosystem. Run everything — **Pharos, Gotchipus, OpenFi, and Brokex** — using just **one wallet, proxy, and config**.
 
----
-
-# ✨ Features
-
-- 🔁 **Automated Swaps** – Swaps between `WPHRS` and `USDC` tokens  
-- 🔄 **PHRS Transfers** – Sends small PHRS to random addresses  
-- 🚿 **Faucet Claims** – Automatically claims free testnet tokens  
-- 📅 **Daily Check-ins** – Completes check-in tasks for airdrop eligibility  
-- 🧩 **Proxy Support** – Supports rotating proxies for each account  
-- 👥 **Multi-Wallet Support** – Runs through all your wallets one-by-one  
-- 🖼️ **Auto NFT Mint** – Automatically mints available NFTs for each wallet  
+> 🔑 Unified Wallet | 🌍 Proxy Rotation | 🧩 Multi-Module Scripts | 📁 All-in-One Repo
 
 ---
 
-# 📋 Prerequisites
+## 📦 Included Bots
 
-- Node.js v18+  
-- npm or yarn  
-- One or more Pharos **testnet private keys**  
-- (Optional) A list of proxies in `proxies.txt`  
+| File Name | Bot Name      | Description                        |
+| --------- | ------------- | ---------------------------------- |
+| `bot1.py` | Pharos BOT    | DeFi automation for Pharos Testnet |
+| `bot2.py` | Gotchipus BOT | NFT minting & wearable claiming    |
+| `bot3.py` | OpenFi BOT    | Lending, borrowing & DeFi services |
+| `bot4.py` | Brokex BOT    | Faucet claim and trade automation  |
 
 ---
 
-# 🛠 Installation
+## 🧠 Features
+
+✅ Use one wallet + proxy across all bots  
+✅ Modular system — run individually or in sequence  
+✅ Covers check-ins, faucets, swaps, NFTs, lending, LPs, and more  
+✅ Free & authenticated proxy support with rotation  
+✅ Multi-account ready for testnet farming  
+
+---
+
+## 🔧 Requirements
+
+* Python `3.9+`
+* `pip` or `pip3` for dependency installs
+
+---
+
+## 🚀 Quick Start Guide
+
+1. **Clone this Repo**
 
 ```bash
-git clone https://github.com/cryptodai3/Pharos-Testnet-Multi-Bot.git
-````
-```bash
-cd Pharos-Testnet-Multi-Bot
-````
-```bash
-npm install
-````
-
----
-
-# ⚙️ Setup Instructions
-
-## 1. Create a `.env` file:
-
-```env
-PRIVATE_KEY_1=your_first_private_key_here
-PRIVATE_KEY_2=your_second_private_key_here
-# Add more if needed
+git clone https://github.com/cryptodai3/Pharos-Automation-Bot.git
+cd Pharos-Automation-Bot
 ```
 
-## 2. (Optional) Create `proxies.txt`:
-
-Each proxy must be on a new line:
-
-```
-http://user:pass@ip:port
-socks5://user:pass@ip:port
-```
-
----
-
-# 🔧 Configuration
-
-The bot comes with default settings for the Pharos Testnet, but you can customize:
-
-* RPC endpoint
-* Token contract addresses
-* Swap amounts
-* Transfer behavior
-
-Edit values inside `index.js` or `config.js` (if available).
-
----
-
-# 🚀 Usage
-
-To run the main bot:
+2. **Install Dependencies**
 
 ```bash
-node index.js
+pip install -r requirements.txt
+# or
+pip3 install -r requirements.txt
 ```
 
-The bot will:
+3. **Add Your Keys & Proxies**
 
-1. Show a welcome banner
-2. Load all wallets and proxies
-3. For each wallet:
+Create `accounts.txt`:
 
-   * Claim faucet (if available)
-   * Perform daily check-in
-   * Transfer PHRS (10x)
-   * Perform token swaps (10x)
-4. Repeat all tasks every 30 minutes
+```
+your_private_key_1
+your_private_key_2
+```
 
----
+Create `proxy.txt`:
 
-# 🖼️ PHAROS NFT MINT
+```
+127.0.0.1:8080
+http://127.0.0.1:8080
+http://user:pass@127.0.0.1:8080
+```
 
-Use this to auto mint NFTs using all wallets:
-One-time setup (first run only):
+4. **Run a Bot**
+
 ```bash
-git pull
-npm install ethers@latest dotenv prompt-sync@latest
+python bot1.py  # Pharos
+python bot2.py  # Gotchipus
+python bot3.py  # OpenFi
+python bot4.py  # Brokex
 ```
 
-Daily mint:
+---
+
+## 🤖 Bot Breakdown
+
+### `bot1.py` — **Pharos Testnet BOT**
+
+🔗 [Pharos Testnet](https://testnet.pharosnetwork.xyz/experience?inviteCode=8G8MJ3zGE5B7tJgP)
+
+Handles:
+
+* Daily check-ins
+* Faucet claims
+* Token swap, LP add, wrap/unwrap
+* Proxy rotation + multi-account
+
+---
+
+### `bot2.py` — **Gotchipus BOT**
+
+🔗 [Gotchipus](https://gotchipus.com/)
+
+Handles:
+
+* NFT minting
+* Wearable claims
+* Same wallet support
+
+---
+
+### `bot3.py` — **OpenFi BOT**
+
+🔗 [OpenFi](https://app.open-fi.xyz/)
+
+Handles:
+
+* Faucet mint
+* Deposit/lend/borrow
+* Fully automated DeFi tasks
+
+---
+
+### `bot4.py` — **Brokex BOT**
+
+🔗 [Brokex](https://app.brokex.trade/)
+🚰 [Brokex Faucet](https://brokex.trade/faucet)
+
+Handles:
+
+* USDT faucet claims
+* Auto trades
+
+---
+
+## ⚙️ Dependency Notes
+
+Ensure version compatibility for:
+`web3`, `eth-account`, `eth-utils`, and `eth-abi`.
+
+If you run into issues:
+
 ```bash
-node gotchipus.js
+pip uninstall library_name
+pip install library_name==exact_version
 ```
 
-Make sure your `.env` file has all your private keys ready!
+---
+
+## 🌾 Happy Farming!
+
+Crafted with ❤️ by [CryptoDai3](https://t.me/cryptodai3) × [YetiDAO](https://t.me/YetiDAO)
 
 ---
 
-# 📝 Logging
+## ☕ Buy Me a Coffee
 
-You’ll see:
-
-* ✅ Success logs in green
-* ⚠️ Warnings in yellow
-* ❌ Errors in red
-* 🔄 Process info in cyan
-* ➤ Step logs in white
+* **EVM:** `0x49bb35693e9631760d2f3519e7db1dd618580a6a`
+* **TON:** `UQDDYNRWZI12zMfXYBoy300ydECC5uouMUFLd_yZa6ZO4Jsm`
+* **SOL:** `2PhLDFnyX8whHDMBbfGSFoLnVEsei6TYxyiqpDzPGyT1`
+* **SUI:** `0xf3b008f8aac4b92195176aad27a892c565c216fd5c07bc99c70edb8394e23b59`
 
 ---
 
-# ⚠️ Important Notes
+## 🔒 Security & Disclaimer
 
-* ONLY use testnet wallets
-* NEVER paste mainnet private keys
-* This bot runs indefinitely (`Ctrl + C` to stop)
-* Randomized delays = safer and more human-like behavior
-* Testnet = zero gas cost (free to experiment!)
+⚠️ Use responsibly:
 
----
-
-# 💬 Support
-
-Need help? Open an issue in the [GitHub repo](https://github.com/cryptodai3/Pharos-Testnet-Multi-Bot/issues)
+* **For Testnet Use Only**
+* **No mainnet wallets** — use burners
+* **Keep keys safe** — don’t share
+* **DYOR** — review code before use
+* **No liability** — you’re on your own, devs aren't responsible
 
 ---
 
-# 🧑‍💻 Contributors
+## 🙌 Support the Mission
 
-* Developed by [cryptodai3](https://t.me/cryptodai3)
-* Supported by the Web3 farming community 💚
+Help us grow this tool:
 
----
-
-# 🙌 Support the Project
-
-If this helps you, show love by:
-
-* Using our referral links 💰
-* Sharing the repo with your frens 🙌
-* Reporting bugs & suggestions 🧠
+⭐ Star this repo
+🔗 Share with fellow airdrop hunters
+🧠 Contribute ideas, PRs, or guides
+🧪 Suggest new module integrations
 
 ---
 
-# ⚠️ Disclaimer
+## 📄 License
 
-This tool is **testnet-only** and comes with no warranty. Use at your own risk.
-The developers are not liable for any misuse or consequences.
-
----
-
-# 📄 License
-
-[MIT License](LICENSE)
-
+Licensed under the **MIT License** — free to use, improve, and fork.
 ---
