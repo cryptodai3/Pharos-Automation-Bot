@@ -40,6 +40,8 @@ A one-stop automation suite for the **Pharos Testnet** and its expanding ecosyst
 
 ```bash
 git clone https://github.com/cryptodai3/Pharos-Automation-Bot.git
+```
+```bash
 cd Pharos-Automation-Bot
 ```
 
