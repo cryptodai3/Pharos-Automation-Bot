@@ -39,19 +39,6 @@ class PharosTestnet:
             {"type":"function","name":"deposit","stateMutability":"payable","inputs":[],"outputs":[]},
             {"type":"function","name":"withdraw","stateMutability":"nonpayable","inputs":[{"name":"wad","type":"uint256"}],"outputs":[]}
         ]''')
-        self.MINT_CONTRACT_ABI = [
-            {
-                "inputs": [
-                    { "internalType": "address", "name": "_asset", "type": "address" },
-                    { "internalType": "address", "name": "_account", "type": "address" },
-                    { "internalType": "uint256", "name": "_amount", "type": "uint256" }
-                ],
-                "name": "mint",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            }
-        ]
         self.SWAP_CONTRACT_ABI = [
             {
                 "inputs": [
@@ -1034,7 +1021,7 @@ class PharosTestnet:
         return option, choose, rotate
     
     async def user_login(self, address: str, proxy=None, retries=5):
-        url = f"{self.BASE_API}/user/login?address={address}&signature={self.signatures[address]}&invite_code={self.ref_code}"
+        url = f"{self.BASE_API}/user/login?address={address}&signature={self.signatures[address]}&wallet=OKX+Wallet&invite_code={self.ref_code}"
         headers = {
             **self.headers,
             "Authorization": "Bearer null",
