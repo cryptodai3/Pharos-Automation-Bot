@@ -12,8 +12,8 @@ class Brokex:
     def __init__(self) -> None:
         self.RPC_URL = "https://testnet.dplabs-internal.com"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
-        self.CLAIM_ROUTER_ADDRESS = "0x7AaFfFe358fe10074254aa5109eBe4550781B8c6"
-        self.TRADE_ROUTER_ADDRESS = "0xBb24da1F6aaA4b0Cb3ff9ae971576790BB65673C"
+        self.CLAIM_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
+        self.TRADE_ROUTER_ADDRESS = "0xf2532bE557F6de4a28a7C706139cb200B1888081"
         self.ERC20_CONTRACT_ABI = json.loads('''[
             {"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"address","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"allowance","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
@@ -292,12 +292,16 @@ class Brokex:
                 "from": address,
                 "data": calldata,
                 "value": 0,
-                "gas": 300000,
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
                 "nonce": web3.eth.get_transaction_count(address, "pending"),
-                "chainId": web3.eth.chain_id
+                "chainId": web3.eth.chain_id,
             }
+
+            try:
+                tx["gas"] = int(web3.eth.estimate_gas(tx) * 1.2)
+            except Exception as e:
+                tx["gas"] = int(280000 * 1.2)
 
             signed_tx = web3.eth.account.sign_transaction(tx, account)
             raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
