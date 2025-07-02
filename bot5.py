@@ -177,7 +177,7 @@ class PharosTestnet:
 """
         print(f"{Style.BRIGHT + Fore.CYAN}{banner}")
         print(f"{Style.BRIGHT + Fore.MAGENTA}{'=' * 50}")
-        print(f"{Fore.CYAN}     PHAROS X Faroswap Auto Tx Bot          ")
+        print(f"{Fore.CYAN}     PHAROS X Faroswap Auto Tx Bot By YetiDAO       ")
         print(f"{Fore.CYAN}           LETS FUCK THIS TESTNET           ")
         print(f"{Style.BRIGHT + Fore.MAGENTA}{'=' * 50}")
         print(f"{Fore.GREEN}1. Wrap PHRS to WPHRS")
@@ -688,7 +688,7 @@ class PharosTestnet:
     async def main(self):
         self.loading_animation()
         try:
-            with open('pkey.txt', 'r') as file:
+            with open('accounts.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
             self.log(f"Total Accounts: {len(accounts)}", indent=0, color=Fore.BLUE)
             while True:
@@ -710,7 +710,7 @@ class PharosTestnet:
                     print(f"{Style.BRIGHT + Fore.RED}Exiting...")
                     break
         except FileNotFoundError:
-            self.log("File 'pkey.txt' Not Found.", indent=0, color=Fore.RED)
+            self.log("File 'accounts.txt' Not Found.", indent=0, color=Fore.RED)
         except Exception as e:
             self.log(f"Error: {e}", indent=0, color=Fore.RED)
 
