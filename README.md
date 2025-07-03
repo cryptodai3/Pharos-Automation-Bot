@@ -14,6 +14,8 @@ A one-stop automation suite for the **Pharos Testnet** and its expanding ecosyst
 | `bot2.py` | Gotchipus BOT | NFT minting & wearable claiming    |
 | `bot3.py` | OpenFi BOT    | Lending, borrowing & DeFi services |
 | `bot4.py` | Brokex BOT    | Faucet claim and trade automation  |
+| `bot5.py` | FaroSwap (1)  | Swap and liquidity automation      |
+| `bot6.py` | FaroSwap (2)  | Swap and liquidity automation      |
 
 ---
 
@@ -77,6 +79,8 @@ python bot1.py  # Pharos
 python bot2.py  # Gotchipus
 python bot3.py  # OpenFi
 python bot4.py  # Brokex
+python bot5.py  # Faroswap (1)
+python bot6.py  # Faroswap (2) 
 ```
 
 ---
