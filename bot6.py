@@ -95,6 +95,13 @@ class Faroswap:
     def clear_terminal(self):
         os.system('cls' if os.name == 'nt' else 'clear')
 
+    def log(self, message):
+        print(
+            f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
+            f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}{message}",
+            flush=True
+        )
+
     def welcome(self):
         print(Fore.LIGHTGREEN_EX + Style.BRIGHT + "\n" + "═" * 60)
         print(Fore.GREEN + Style.BRIGHT + "    ⚡ Pharos Automation BOT ⚡")
@@ -105,16 +112,6 @@ class Faroswap:
         print(Fore.CYAN + Style.BRIGHT + "    ────────────────────────────────")
         print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.0 🚀")
         print(Fore.LIGHTGREEN_EX + Style.BRIGHT + "═" * 60 + "\n")
-
-    def welcome(self):
-        print(
-            f"""
-        {Fore.GREEN + Style.BRIGHT}Faroswap{Fore.BLUE + Style.BRIGHT} Auto BOT
-            """
-            f"""
-        {Fore.GREEN + Style.BRIGHT}Rey? {Fore.YELLOW + Style.BRIGHT}<INI WATERMARK>
-            """
-        )
 
     def format_seconds(self, seconds):
         hours, remainder = divmod(seconds, 3600)
