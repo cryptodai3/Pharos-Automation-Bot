@@ -1,6 +1,5 @@
 from web3 import Web3
 from eth_account import Account
-from eth_abi.abi import encode
 from aiohttp import ClientSession, ClientTimeout
 from datetime import datetime
 from colorama import *
@@ -10,17 +9,35 @@ wib = pytz.timezone('Asia/Jakarta')
 
 class Brokex:
     def __init__(self) -> None:
-        self.RPC_URL = "https://testnet.dplabs-internal.com"
+        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/54b49326c9f44b6e8730dc5dd4348421"
         self.USDT_CONTRACT_ADDRESS = "0x78ac5e2d8a78a8b8e6d10c7b7274b03c10c91cef"
         self.CLAIM_ROUTER_ADDRESS = "0x50576285BD33261DEe1aD99BF766CD8249520a58"
-        self.TRADE_ROUTER_ADDRESS = "0xf2532bE557F6de4a28a7C706139cb200B1888081"
+        self.TRADE_ROUTER_ADDRESS = "0x01f61eb2e4667c6188f4c1c87c0f529155bf888c"
         self.ERC20_CONTRACT_ABI = json.loads('''[
             {"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"address","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"allowance","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"","type":"bool"}]},
             {"type":"function","name":"decimals","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint8"}]},
+            {"type":"function","name":"hasClaimed","stateMutability":"view","inputs":[{"internalType":"address","name":"","type":"address"}],"outputs":[{"internalType":"bool","name":"","type":"bool"}]},
             {"type":"function","name":"claim","stateMutability":"nonpayable","inputs":[],"outputs":[]}
         ]''')
+        self.ORDER_CONTRACT_ABI = [
+            {
+                "name": "createPendingOrder",
+                "type": "function",
+                "stateMutability": "nonpayable",
+                "inputs": [
+                    { "internalType": "uint256", "name": "assetIndex", "type": "uint256" },
+                    { "internalType": "bool", "name": "isLong", "type": "bool" },
+                    { "internalType": "uint256", "name": "usdSize", "type": "uint256" },
+                    { "internalType": "uint256", "name": "leverage", "type": "uint256" },
+                    { "internalType": "uint256", "name": "slPrice", "type": "uint256" },
+                    { "internalType": "uint256", "name": "tpPrice", "type": "uint256" }
+                ],
+                "outputs": []
+            }
+
+        ]
         self.pairs = [
             { "name": "BTC_USDT", "desimal": 0 },
             { "name": "ETH_USDT", "desimal": 1 },
@@ -53,7 +70,7 @@ class Brokex:
         print(Fore.YELLOW + Style.BRIGHT + "    🧑‍💻 Author     : YetiDAO")
         print(Fore.YELLOW + Style.BRIGHT + "    🌐 Status     : Running & Monitoring...")
         print(Fore.CYAN + Style.BRIGHT + "    ────────────────────────────────")
-        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.5 🚀")
+        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.6 🚀")
         print(Fore.LIGHTGREEN_EX + Style.BRIGHT + "═" * 60 + "\n")
 
     def format_seconds(self, seconds):
@@ -172,6 +189,22 @@ class Brokex:
             )
             return None
         
+    async def check_faucet_status(self, address: str, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            contract_address = web3.to_checksum_address(self.CLAIM_ROUTER_ADDRESS)
+            token_contract = web3.eth.contract(address=contract_address, abi=self.ERC20_CONTRACT_ABI)
+            claim_data = token_contract.functions.hasClaimed(web3.to_checksum_address(address)).call()
+
+            return claim_data
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
     async def perform_claim_faucet(self, account: str, address: str, use_proxy: bool):
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
@@ -265,45 +298,36 @@ class Brokex:
         except Exception as e:
             raise Exception(f"Approving Token Contract Failed: {str(e)}")
 
-    async def perform_trade(self, account: str, address: str, pair: int, action: int, use_proxy: bool):
+    async def perform_trade(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool):
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
             asset_address = web3.to_checksum_address(self.USDT_CONTRACT_ADDRESS)
-            token_contract = web3.eth.contract(address=web3.to_checksum_address(asset_address), abi=self.ERC20_CONTRACT_ABI)
-            decimals = token_contract.functions.decimals().call()
+            asset_contract = web3.eth.contract(address=web3.to_checksum_address(asset_address), abi=self.ERC20_CONTRACT_ABI)
+            decimals = asset_contract.functions.decimals().call()
             
             trade_amount = int(self.trade_amount * (10 ** decimals))
 
             await self.approving_token(account, address, self.TRADE_ROUTER_ADDRESS, asset_address, trade_amount, use_proxy)
 
-            encoded_data = encode(
-                ['uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256'],
-                [pair, action, trade_amount, 5, 0, 0]
-            )
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.TRADE_ROUTER_ADDRESS), abi=self.ORDER_CONTRACT_ABI)
 
-            calldata = "0x3c1395d2" + encoded_data.hex()
+            order_data = token_contract.functions.createPendingOrder(pair, is_long, trade_amount, 5, 0, 0)
+            estimated_gas = order_data.estimate_gas({"from": address})
 
             max_priority_fee = web3.to_wei(1, "gwei")
             max_fee = max_priority_fee
 
-            tx = {
-                "to": self.TRADE_ROUTER_ADDRESS,
+            order_tx = order_data.build_transaction({
                 "from": address,
-                "data": calldata,
-                "value": 0,
+                "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
                 "nonce": web3.eth.get_transaction_count(address, "pending"),
                 "chainId": web3.eth.chain_id,
-            }
+            })
 
-            try:
-                tx["gas"] = int(web3.eth.estimate_gas(tx) * 1.2)
-            except Exception as e:
-                tx["gas"] = int(280000 * 1.2)
-
-            signed_tx = web3.eth.account.sign_transaction(tx, account)
+            signed_tx = web3.eth.account.sign_transaction(order_tx, account)
             raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
             tx_hash = web3.to_hex(raw_tx)
             receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=600)
@@ -420,34 +444,41 @@ class Brokex:
         return option, choose
     
     async def process_perform_claim_faucet(self, account: str, address: str, use_proxy: bool):
-        tx_hash, block_number = await self.perform_claim_faucet(account, address, use_proxy)
-        if tx_hash and block_number:
-            explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
+        has_claimed = await self.check_faucet_status(address, use_proxy)
+        if not has_claimed:
+            tx_hash, block_number = await self.perform_claim_faucet(account, address, use_proxy)
+            if tx_hash and block_number:
+                explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
 
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} USDT Faucet Claimed Successfully {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}   Explorer:{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
-            )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                    f"{Fore.GREEN+Style.BRIGHT} USDT Faucet Claimed Successfully {Style.RESET_ALL}"
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Tx Hash :{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Explorer:{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
+                )
+            else:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+                )
         else:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
-                f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+                f"{Fore.YELLOW+Style.BRIGHT} Already Claimed {Style.RESET_ALL}"
             )
 
-    async def process_perform_trade(self, account: str, address: str, pair: int, action: int, use_proxy: bool):
-        tx_hash, block_number = await self.perform_trade(account, address, pair, action, use_proxy)
+    async def process_perform_trade(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool):
+        tx_hash, block_number = await self.perform_trade(account, address, pair, is_long, use_proxy)
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
 
@@ -491,10 +522,10 @@ class Brokex:
             )
 
             pairs = random.choice(self.pairs)
-            action = random.choice([0, 1])
+            is_long = random.choice([True, False])
             name = pairs["name"]
             pair = pairs["desimal"]
-            action_name = "Short" if action == 0 else "Long"
+            action = "Long" if is_long == True else "Short"
 
             balance = await self.get_token_balance(address, self.USDT_CONTRACT_ADDRESS, use_proxy)
 
@@ -508,7 +539,7 @@ class Brokex:
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Pair    :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} {action_name} - {name} {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {action} - {name} {Style.RESET_ALL}"
             )
 
             if not balance or balance <= self.trade_amount:
@@ -518,7 +549,7 @@ class Brokex:
                 )
                 return
             
-            await self.process_perform_trade(account, address, pair, action, use_proxy)
+            await self.process_perform_trade(account, address, pair, is_long, use_proxy)
             await self.print_timer()
 
     async def process_accounts(self, account: str, address: str, option: int, use_proxy):
