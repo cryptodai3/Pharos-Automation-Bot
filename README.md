@@ -71,15 +71,41 @@ http://127.0.0.1:8080
 http://user:pass@127.0.0.1:8080
 ```
 
-4. **Run a Bot**
+4. Configuration only for Faroswap BOT
+
+### Screenshots
+<img width="1919" height="887" alt="image1" src="https://github.com/user-attachments/assets/f32173f0-6dbb-4bfe-b9bd-963f2e992f1d" />
+
+<img width="1919" height="891" alt="image2" src="https://github.com/user-attachments/assets/e65d4da6-bb11-4890-9b1d-89f81299e846" />
+
+<img width="1919" height="883" alt="image3" src="https://github.com/user-attachments/assets/b88a4dd6-a3ff-489a-9e02-aa047474b86b" />
+
+<img width="1919" height="896" alt="image4" src="https://github.com/user-attachments/assets/b7d4e074-f05b-4908-baf4-1787f03b94fb" />
+
+<img width="1918" height="889" alt="image5" src="https://github.com/user-attachments/assets/f5f74d67-92c9-4655-927f-aec3997141ef" />
+
+<img width="1594" height="503" alt="image6" src="https://github.com/user-attachments/assets/556b095e-02f0-4101-8bf8-4601afedf55b" />
+
+<img width="681" height="402" alt="image7" src="https://github.com/user-attachments/assets/3de642d3-61fb-4b9f-937b-715603042be6" />
+
+- **pools.json:** You will find the file `pools.json` inside the project directory. Make sure `pools.json` contains data that matches the format expected by the script. Here are examples of file formats:
+  ```json
+    [    
+        {
+            "USDC_USDT": "Your USDC_USDT PMM Pool Address",
+            "USDT_USDC": "Your USDT_USDC PMM Pool Address"
+        }
+    ]
+  ```
+
+5. **Run a Bot**
 
 ```bash
 python bot1.py  # Pharos
 python bot2.py  # Gotchipus
 python bot3.py  # OpenFi
 python bot4.py  # Brokex
-python bot5.py  # Faroswap (1)
-python bot6.py  # Faroswap (2) 
+python bot5.py  # Faroswap
 ```
 
 ---
@@ -132,6 +158,21 @@ Handles:
 
 * USDT faucet claims
 * Auto trades
+
+---
+
+### `bot5.py` — **Faroswap BOT**
+
+🔗 [Faroswap Swap](https://faroswap.xyz/swap)
+🚰 [Faroswap Pool](https://faroswap.xyz/pool)
+
+Handles:
+
+* Auto Deposit PHRS to WPHRS
+* Auto Withdraw WPHRS to PHRS
+* Auto Swap With Random Pairs
+* Auto Add Liquidity Pool
+* Multi Accounts
 
 ---
 
