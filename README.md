@@ -158,6 +158,7 @@ Handles:
 
 * USDT faucet claims
 * Auto trades
+* Auto Add & Withdraw Liquidity Pool
 
 ---
 
