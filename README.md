@@ -134,6 +134,7 @@ Handles:
 * NFT minting
 * Wearable claims
 * Same wallet support
+* Auto Claim Daily Check-In
 
 ---
 
