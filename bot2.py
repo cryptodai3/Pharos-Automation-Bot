@@ -1,16 +1,32 @@
 from web3 import Web3
+from web3.exceptions import TransactionNotFound
 from eth_account import Account
-from aiohttp import ClientSession, ClientTimeout
+from eth_abi.abi import encode
+from eth_utils import keccak, to_hex
+from aiohttp import ClientResponseError, ClientSession, ClientTimeout, BasicAuth
+from aiohttp_socks import ProxyConnector
+from fake_useragent import FakeUserAgent
 from datetime import datetime
 from colorama import *
-import asyncio, json, os, pytz
+import asyncio, time, json, re, os, pytz
 
 wib = pytz.timezone('Asia/Jakarta')
 
 class Gotchipus:
     def __init__(self) -> None:
-        self.RPC_URL = "https://testnet.dplabs-internal.com"
-        self.NFT_CONTRACT_ADDRESS = "0x0000000038f050528452D6Da1E7AACFA7B3Ec0a8"
+        self.HEADERS = {
+            "Accept": "*/*",
+            "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Origin": "https://gotchipus.com",
+            "Referer": "https://gotchipus.com/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "User-Agent": FakeUserAgent().random
+        }
+        self.BASE_API = "https://gotchipus.com"
+        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/54b49326c9f44b6e8730dc5dd4348421"
+        self.GOTCHIPUS_CONTRACT_ADDRESS = "0x0000000038f050528452D6Da1E7AACFA7B3Ec0a8"
         self.ERC20_CONTRACT_ABI = json.loads('''[
             {"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"address","type":"address"}],"outputs":[{"name":"","type":"uint256"}]}
         ]''')
@@ -23,16 +39,17 @@ class Gotchipus:
                 "type": "function"
             },
             {
-                "inputs":[],
-                "name":"claimWearable",
-                "outputs":[],
-                "stateMutability":"nonpayable",
-                "type":"function"
+                "inputs": [],
+                "name": "claimWearable",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
             }
         ]
         self.proxies = []
         self.proxy_index = 0
         self.account_proxies = {}
+        self.used_nonce = {}
 
     def clear_terminal(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -60,12 +77,12 @@ class Gotchipus:
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
     
-    async def load_proxies(self, use_proxy_choice: int):
+    async def load_proxies(self, use_proxy_choice: bool):
         filename = "proxy.txt"
         try:
             if use_proxy_choice == 1:
                 async with ClientSession(timeout=ClientTimeout(total=30)) as session:
-                    async with session.get("https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text") as response:
+                    async with session.get("https://raw.githubusercontent.com/monosans/proxy-list/refs/heads/main/proxies/http.txt") as response:
                         response.raise_for_status()
                         content = await response.text()
                         with open(filename, 'w') as f:
@@ -114,6 +131,26 @@ class Gotchipus:
         self.proxy_index = (self.proxy_index + 1) % len(self.proxies)
         return proxy
     
+    def build_proxy_config(self, proxy=None):
+        if not proxy:
+            return None, None, None
+
+        if proxy.startswith("socks"):
+            connector = ProxyConnector.from_url(proxy)
+            return connector, None, None
+
+        elif proxy.startswith("http"):
+            match = re.match(r"http://(.*?):(.*?)@(.*)", proxy)
+            if match:
+                username, password, host_port = match.groups()
+                clean_url = f"http://{host_port}"
+                auth = BasicAuth(username, password)
+                return None, clean_url, auth
+            else:
+                return None, proxy, None
+
+        raise Exception("Unsupported Proxy Type.")
+    
     def generate_address(self, account: str):
         try:
             account = Account.from_key(account)
@@ -129,6 +166,43 @@ class Gotchipus:
             return mask_account
         except Exception as e:
             return None
+        
+    def build_struct_data(self, account: str, address: str):
+        try:
+            domain_typehash = keccak(text="EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+            name_hash = keccak(text="Gotchipus")
+            version_hash = keccak(text="v0.1.0")
+
+            domain_separator = keccak(encode(
+                ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
+                [domain_typehash, name_hash, version_hash, 688688, self.GOTCHIPUS_CONTRACT_ADDRESS]
+            ))
+
+            checkin_typehash = keccak(text="CheckIn(string intent,address user,uint256 timestamp)")
+            intent_hash = keccak(text="Daily Check-In for Gotchipus")
+
+            timestamp = int(time.time())
+
+            struct_hash = keccak(encode(
+                ['bytes32', 'bytes32', 'address', 'uint256'],
+                [checkin_typehash, intent_hash, address, timestamp]
+            ))
+
+            digest = keccak(b"\x19\x01" + domain_separator + struct_hash)
+
+            acct = Account.from_key(account)
+            signed = acct.unsafe_sign_hash(digest)
+            signature = to_hex(signed.signature)
+
+            payload = {
+                "address": address,
+                "signature": signature,
+                "timestamp": timestamp,
+            }
+
+            return payload
+        except Exception as e:
+            raise Exception(f"Build Struct Data Failed: {str(e)}")
         
     async def get_web3_with_check(self, address: str, use_proxy: bool, retries=3, timeout=60):
         request_kwargs = {"timeout": timeout}
@@ -163,11 +237,37 @@ class Gotchipus:
             )
             return None
         
+    async def send_raw_transaction_with_retries(self, account, web3, tx, retries=5):
+        for attempt in range(retries):
+            try:
+                signed_tx = web3.eth.account.sign_transaction(tx, account)
+                raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                tx_hash = web3.to_hex(raw_tx)
+                return tx_hash
+            except TransactionNotFound:
+                pass
+            except Exception as e:
+                pass
+            await asyncio.sleep(2 ** attempt)
+        raise Exception("Transaction Hash Not Found After Maximum Retries")
+
+    async def wait_for_receipt_with_retries(self, web3, tx_hash, retries=5):
+        for attempt in range(retries):
+            try:
+                receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=300)
+                return receipt
+            except TransactionNotFound:
+                pass
+            except Exception as e:
+                pass
+            await asyncio.sleep(2 ** attempt)
+        raise Exception("Transaction Receipt Not Found After Maximum Retries")
+
     async def perform_mint_nft(self, account: str, address: str, use_proxy: bool):
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
-            contract_address = web3.to_checksum_address(self.NFT_CONTRACT_ADDRESS)
+            contract_address = web3.to_checksum_address(self.GOTCHIPUS_CONTRACT_ADDRESS)
             token_contract = web3.eth.contract(address=contract_address, abi=self.MINT_CONTRACT_ABI)
 
             mint_data = token_contract.functions.freeMint()
@@ -181,15 +281,15 @@ class Gotchipus:
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             })
 
-            signed_tx = web3.eth.account.sign_transaction(mint_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
-            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=300)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, mint_tx)
+            receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
         except Exception as e:
@@ -203,7 +303,7 @@ class Gotchipus:
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
-            contract_address = web3.to_checksum_address(self.NFT_CONTRACT_ADDRESS)
+            contract_address = web3.to_checksum_address(self.GOTCHIPUS_CONTRACT_ADDRESS)
             token_contract = web3.eth.contract(address=contract_address, abi=self.MINT_CONTRACT_ABI)
 
             mint_data = token_contract.functions.claimWearable()
@@ -217,15 +317,15 @@ class Gotchipus:
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             })
 
-            signed_tx = web3.eth.account.sign_transaction(mint_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
-            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=300)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, mint_tx)
+            receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
         except Exception as e:
@@ -239,23 +339,25 @@ class Gotchipus:
         while True:
             try:
                 print(f"{Fore.GREEN + Style.BRIGHT}Select Option:{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}1. Mint Gotchipus NFT{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}2. Claim Wearable{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}3. Run All Features{Style.RESET_ALL}")
-                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3] -> {Style.RESET_ALL}").strip())
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Claim Daily Check-In{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Mint Gotchipus NFT{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Claim Wearable{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}4. Run All Features{Style.RESET_ALL}")
+                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4] -> {Style.RESET_ALL}").strip())
 
-                if option in [1, 2, 3]:
+                if option in [1, 2, 3, 4]:
                     option_type = (
-                        "Mint Gotchipus NFT" if option == 1 else 
-                        "Claim Wearable" if option == 2 else 
+                        "Claim Daily Check-In" if option == 1 else 
+                        "Mint Gotchipus NFT" if option == 2 else 
+                        "Claim Wearable" if option == 3 else 
                         "Run All Features"
                     )
                     print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, or 3.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, or 4.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, or 3).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, or 4).{Style.RESET_ALL}")
 
         while True:
             try:
@@ -277,7 +379,115 @@ class Gotchipus:
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
 
-        return option, choose
+        rotate = False
+        if choose in [1, 2]:
+            while True:
+                rotate = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip()
+
+                if rotate in ["y", "n"]:
+                    rotate = rotate == "y"
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter 'y' or 'n'.{Style.RESET_ALL}")
+
+        return option, choose, rotate
+    
+    async def check_connection(self, proxy_url=None):
+        connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+        try:
+            async with ClientSession(connector=connector, timeout=ClientTimeout(total=10)) as session:
+                async with session.get(url="https://api.ipify.org?format=json", proxy=proxy, proxy_auth=proxy_auth) as response:
+                    response.raise_for_status()
+                    return True
+        except (Exception, ClientResponseError) as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}Status  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} Connection Not 200 OK {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def task_info(self, address: str, proxy_url=None, retries=5):
+        url = f"{self.BASE_API}/api/tasks/info"
+        data = json.dumps({"address":address})
+        headers = {
+            **self.HEADERS,
+            "Content-Length": str(len(data)),
+            "Content-Type": "application/json"
+        }
+        for attempt in range(retries):
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            try:
+                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
+                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries:
+                    await asyncio.sleep(5)
+                    continue
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Fetch Last Check-In Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
+                return None
+            
+    async def verify_tasks(self, account: str, address: str, proxy_url=None, retries=5):
+        url = f"{self.BASE_API}/api/tasks/verify"
+        data = json.dumps(self.build_struct_data(account, address))
+        headers = {
+            **self.HEADERS,
+            "Content-Length": str(len(data)),
+            "Content-Type": "application/json"
+        }
+        for attempt in range(retries):
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            try:
+                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
+                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries:
+                    await asyncio.sleep(5)
+                    continue
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Verify  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
+                return None
+            
+    async def claim_checkin(self, address: str, proxy_url=None, retries=5):
+        url = f"{self.BASE_API}/api/tasks/checkin"
+        data = json.dumps({"address":address, "event":"check_in"})
+        headers = {
+            **self.HEADERS,
+            "Content-Length": str(len(data)),
+            "Content-Type": "application/json"
+        }
+        for attempt in range(retries):
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            try:
+                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
+                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries:
+                    await asyncio.sleep(5)
+                    continue
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Not Claimed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
+                return None
     
     async def process_perform_mint_nft(self, account: str, address: str, use_proxy: bool):
         tx_hash, block_number = await self.perform_mint_nft(account, address, use_proxy)
@@ -336,6 +546,114 @@ class Gotchipus:
     async def process_option_1(self, account: str, address: str, use_proxy):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT}Check-In{Style.RESET_ALL}"
+        )
+
+        proxy = self.get_next_proxy_for_account(address) if use_proxy else None
+        
+        tasks = await self.task_info(address, proxy)
+        if tasks and tasks.get("code") == 0:
+            xp_point = tasks.get("data", {}).get("xp", 0)
+            level = tasks.get("data", {}).get("level", 0)
+            last_checkin = tasks.get("data", {}).get("latest_check_in_at", None)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Points  :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {xp_point} XP {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Level   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {level} {Style.RESET_ALL}"
+            )
+
+            if last_checkin is None:
+                verified = await self.verify_tasks(account, address, proxy)
+                if verified and verified.get("code") == 0:
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   Verify  :{Style.RESET_ALL}"
+                        f"{Fore.GREEN+Style.BRIGHT}Success{Style.RESET_ALL}"
+                    )
+
+                    claim = await self.claim_checkin(address, proxy)
+                    if claim and claim.get("code") == 0:
+                        self.log(
+                            f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                            f"{Fore.GREEN+Style.BRIGHT}Claimed Successfully{Style.RESET_ALL}"
+                        )
+                    elif claim and claim.get("code") == 1:
+                        err_msg = claim.get("message", "Unknown Error")
+                        self.log(
+                            f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                            f"{Fore.RED+Style.BRIGHT} Not Claimed {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                            f"{Fore.YELLOW+Style.BRIGHT} {err_msg} {Style.RESET_ALL}"
+                        )
+
+                elif verified and verified.get("code") == 1:
+                    err_msg = verified.get("message", "Unknown Error")
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   Verify  :{Style.RESET_ALL}"
+                        f"{Fore.RED+Style.BRIGHT} Failed {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                        f"{Fore.YELLOW+Style.BRIGHT} {err_msg} {Style.RESET_ALL}"
+                    )
+            
+            else:
+                next_checkin = last_checkin + 86400
+                if int(time.time()) < next_checkin:
+                    formatted_time = datetime.fromtimestamp(next_checkin).astimezone(wib).strftime('%x %X %Z')
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                        f"{Fore.YELLOW+Style.BRIGHT} Not Time to Claim {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                        f"{Fore.CYAN+Style.BRIGHT} Next Claim at {Style.RESET_ALL}"
+                        f"{Fore.WHITE+Style.BRIGHT}{formatted_time}{Style.RESET_ALL}"
+                    )
+                    return
+                
+                verified = await self.verify_tasks(account, address, proxy)
+                if verified and verified.get("code") == 0:
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   Verify  :{Style.RESET_ALL}"
+                        f"{Fore.GREEN+Style.BRIGHT}Success{Style.RESET_ALL}"
+                    )
+
+                    claim = await self.claim_checkin(address, proxy)
+                    if claim and claim.get("code") == 0:
+                        self.log(
+                            f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                            f"{Fore.GREEN+Style.BRIGHT}Claimed Successfully{Style.RESET_ALL}"
+                        )
+                    elif claim and claim.get("code") == 1:
+                        err_msg = claim.get("message", "Unknown Error")
+                        self.log(
+                            f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                            f"{Fore.RED+Style.BRIGHT} Not Claimed {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                            f"{Fore.YELLOW+Style.BRIGHT} {err_msg} {Style.RESET_ALL}"
+                        )
+
+                elif verified and verified.get("code") == 1:
+                    err_msg = verified.get("message", "Unknown Error")
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   Verify  :{Style.RESET_ALL}"
+                        f"{Fore.RED+Style.BRIGHT} Failed {Style.RESET_ALL}"
+                        f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                        f"{Fore.YELLOW+Style.BRIGHT} {err_msg} {Style.RESET_ALL}"
+                    )
+
+        elif tasks and tasks.get("code") == 1:
+            err_msg = tasks.get("message", "Unknown Error")
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} Fetch Last Check-In Failed {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                f"{Fore.YELLOW+Style.BRIGHT} {err_msg} {Style.RESET_ALL}"
+            )
+
+    async def process_option_2(self, account: str, address: str, use_proxy):
+        self.log(
+            f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
             f"{Fore.GREEN+Style.BRIGHT}NFT{Style.RESET_ALL}"
         )
         balance = await self.get_token_balance(address, use_proxy)
@@ -359,7 +677,7 @@ class Gotchipus:
         
         await self.process_perform_mint_nft(account, address, use_proxy)
 
-    async def process_option_2(self, account: str, address: str, use_proxy):
+    async def process_option_3(self, account: str, address: str, use_proxy):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
             f"{Fore.GREEN+Style.BRIGHT}Wearable{Style.RESET_ALL}"
@@ -384,47 +702,81 @@ class Gotchipus:
         
         await self.process_perform_claim_wearable(account, address, use_proxy)
 
-    async def process_accounts(self, account: str, address: str, option: int, use_proxy):
-        proxy = self.get_next_proxy_for_account(address) if use_proxy else None
-        self.log(
-            f"{Fore.CYAN+Style.BRIGHT}Proxy   :{Style.RESET_ALL}"
-            f"{Fore.WHITE+Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-        )
-            
-        if option == 1:
+    async def process_check_connection(self, address: int, use_proxy: bool, rotate_proxy: bool):
+        while True:
+            proxy = self.get_next_proxy_for_account(address) if use_proxy else None
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Mint Gotchipus NFT {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}Proxy   :{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {proxy} {Style.RESET_ALL}"
             )
-            
-            await self.process_option_1(account, address, use_proxy)
 
-        if option == 2:
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Claim Wearable {Style.RESET_ALL}"
-            )
-            
-            await self.process_option_2(account, address, use_proxy)
+            is_valid = await self.check_connection(proxy)
+            if not is_valid:
+                if rotate_proxy:
+                    proxy = self.rotate_proxy_for_account(address)
+                    continue
 
-        else:
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Run All Features {Style.RESET_ALL}"
-            )
+                return False
             
-            await self.process_option_1(account, address, use_proxy)
-            await asyncio.sleep(5)
+            return True
 
-            await self.process_option_2(account, address, use_proxy)
-            await asyncio.sleep(5)
+    async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool, rotate_proxy: bool):
+        is_valid = await self.process_check_connection(address, use_proxy, rotate_proxy)
+        if is_valid:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+            if not web3:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Status  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Web3 Not Connected {Style.RESET_ALL}"
+                )
+                return
+            
+            self.used_nonce[address] = web3.eth.get_transaction_count(address, "pending")
+            
+            if option == 1:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Claim Daily Check-In {Style.RESET_ALL}"
+                )
+                
+                await self.process_option_1(account, address, use_proxy)
+
+            elif option == 2:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Mint Gotchipus NFT {Style.RESET_ALL}"
+                )
+                
+                await self.process_option_2(account, address, use_proxy)
+
+            elif option == 3:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Claim Wearable {Style.RESET_ALL}"
+                )
+                
+                await self.process_option_3(account, address, use_proxy)
+
+            else:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Run All Features {Style.RESET_ALL}"
+                )
+                
+                await self.process_option_1(account, address, use_proxy)
+                await asyncio.sleep(5)
+
+                await self.process_option_2(account, address, use_proxy)
+                await asyncio.sleep(5)
+
+                await self.process_option_3(account, address, use_proxy)
 
     async def main(self):
         try:
             with open('accounts.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
             
-            option, use_proxy_choice = self.print_question()
+            option, use_proxy_choice, rotate_proxy = self.print_question()
 
             while True:
                 use_proxy = False
@@ -459,7 +811,7 @@ class Gotchipus:
                             )
                             continue
 
-                        await self.process_accounts(account, address, option, use_proxy)
+                        await self.process_accounts(account, address, option, use_proxy, rotate_proxy)
                         await asyncio.sleep(3)
 
                 self.log(f"{Fore.CYAN + Style.BRIGHT}={Style.RESET_ALL}"*72)
