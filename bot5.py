@@ -1,12 +1,12 @@
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
 from eth_account import Account
-from aiohttp import ClientSession, ClientTimeout, ClientResponseError
+from aiohttp import ClientResponseError, ClientSession, ClientTimeout, BasicAuth
 from aiohttp_socks import ProxyConnector
 from fake_useragent import FakeUserAgent
 from datetime import datetime
 from colorama import *
-import asyncio, random, json, time, os, pytz
+import asyncio, random, json, time, re, os, pytz
 
 wib = pytz.timezone('Asia/Jakarta')
 
@@ -72,6 +72,7 @@ class Faroswap:
         self.proxies = []
         self.proxy_index = 0
         self.account_proxies = {}
+        self.used_nonce = {}
         self.dp_or_wd_option = None
         self.deposit_amount = 0
         self.withdraw_amount = 0
@@ -110,7 +111,7 @@ class Faroswap:
         print(Fore.YELLOW + Style.BRIGHT + "    🧑‍💻 Author     : YetiDAO")
         print(Fore.YELLOW + Style.BRIGHT + "    🌐 Status     : Running & Monitering...")
         print(Fore.CYAN + Style.BRIGHT + "    ────────────────────────────────")
-        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.1 🚀")
+        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.2 🚀")
         print(Fore.LIGHTGREEN_EX + Style.BRIGHT + "═" * 60 + "\n")
 
     def format_seconds(self, seconds):
@@ -133,12 +134,12 @@ class Faroswap:
         except json.JSONDecodeError:
             return []
     
-    async def load_proxies(self, use_proxy_choice: int):
+    async def load_proxies(self, use_proxy_choice: bool):
         filename = "proxy.txt"
         try:
             if use_proxy_choice == 1:
                 async with ClientSession(timeout=ClientTimeout(total=30)) as session:
-                    async with session.get("https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text") as response:
+                    async with session.get("https://raw.githubusercontent.com/monosans/proxy-list/refs/heads/main/proxies/http.txt") as response:
                         response.raise_for_status()
                         content = await response.text()
                         with open(filename, 'w') as f:
@@ -186,6 +187,26 @@ class Faroswap:
         self.account_proxies[token] = proxy
         self.proxy_index = (self.proxy_index + 1) % len(self.proxies)
         return proxy
+    
+    def build_proxy_config(self, proxy=None):
+        if not proxy:
+            return None, None, None
+
+        if proxy.startswith("socks"):
+            connector = ProxyConnector.from_url(proxy)
+            return connector, None, None
+
+        elif proxy.startswith("http"):
+            match = re.match(r"http://(.*?):(.*?)@(.*)", proxy)
+            if match:
+                username, password, host_port = match.groups()
+                clean_url = f"http://{host_port}"
+                auth = BasicAuth(username, password)
+                return None, clean_url, auth
+            else:
+                return None, proxy, None
+
+        raise Exception("Unsupported Proxy Type.")
     
     def generate_address(self, account: str):
         try:
@@ -316,16 +337,31 @@ class Faroswap:
             )
             return None
         
+    async def send_raw_transaction_with_retries(self, account, web3, tx, retries=5):
+        for attempt in range(retries):
+            try:
+                signed_tx = web3.eth.account.sign_transaction(tx, account)
+                raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                tx_hash = web3.to_hex(raw_tx)
+                return tx_hash
+            except TransactionNotFound:
+                pass
+            except Exception as e:
+                pass
+            await asyncio.sleep(2 ** attempt)
+        raise Exception("Transaction Hash Not Found After Maximum Retries")
+
     async def wait_for_receipt_with_retries(self, web3, tx_hash, retries=5):
         for attempt in range(retries):
-            await asyncio.sleep(5)
             try:
                 receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=300)
                 return receipt
-            except (Exception, TransactionNotFound) as e:
-                if attempt < retries:
-                    continue
-                raise Exception("Transaction receipt not found after maximum retries.")
+            except TransactionNotFound:
+                pass
+            except Exception as e:
+                pass
+            await asyncio.sleep(2 ** attempt)
+        raise Exception("Transaction Receipt Not Found After Maximum Retries")
         
     async def perform_deposit(self, account: str, address: str, use_proxy: bool):
         try:
@@ -347,15 +383,15 @@ class Faroswap:
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             })
 
-            signed_tx = web3.eth.account.sign_transaction(deposit_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, deposit_tx)
             receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
         except Exception as e:
@@ -384,15 +420,15 @@ class Faroswap:
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             })
 
-            signed_tx = web3.eth.account.sign_transaction(withdraw_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, withdraw_tx)
             receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
         except Exception as e:
@@ -422,15 +458,15 @@ class Faroswap:
                     "gas": int(estimated_gas * 1.2),
                     "maxFeePerGas": int(max_fee),
                     "maxPriorityFeePerGas": int(max_priority_fee),
-                    "nonce": web3.eth.get_transaction_count(address, "pending"),
+                    "nonce": self.used_nonce[address],
                     "chainId": web3.eth.chain_id,
                 })
 
-                signed_tx = web3.eth.account.sign_transaction(approve_tx, account)
-                raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-                tx_hash = web3.to_hex(raw_tx)
+                tx_hash = await self.send_raw_transaction_with_retries(account, web3, approve_tx)
                 receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
                 block_number = receipt.blockNumber
+                self.used_nonce[address] += 1
 
                 explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
                 
@@ -490,15 +526,15 @@ class Faroswap:
                 "gas": int(gas_limit),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             }
 
-            signed_tx = web3.eth.account.sign_transaction(swap_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, swap_tx)
             receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
         except Exception as e:
@@ -537,16 +573,15 @@ class Faroswap:
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
-                "nonce": web3.eth.get_transaction_count(address, "pending"),
+                "nonce": self.used_nonce[address],
                 "chainId": web3.eth.chain_id,
             })
 
-            signed_tx = web3.eth.account.sign_transaction(add_lp_tx, account)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            tx_hash = web3.to_hex(raw_tx)
-
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, add_lp_tx)
             receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
             block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
 
             return tx_hash, block_number
 
@@ -679,27 +714,27 @@ class Faroswap:
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
         
-        # while True:
-        #     try:
-        #         amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter WETH Amount for Each Swap Tx [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-        #         if amount > 0:
-        #             self.weth_swap_amount = amount
-        #             break
-        #         else:
-        #             print(f"{Fore.RED + Style.BRIGHT}WETH Amount must be greater than 0.{Style.RESET_ALL}")
-        #     except ValueError:
-        #         print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+        while True:
+            try:
+                amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter WETH Amount for Each Swap Tx [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
+                if amount > 0:
+                    self.weth_swap_amount = amount
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}WETH Amount must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
         
-        # while True:
-        #     try:
-        #         amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter WBTC Amount for Each Swap Tx [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
-        #         if amount > 0:
-        #             self.wbtc_swap_amount = amount
-        #             break
-        #         else:
-        #             print(f"{Fore.RED + Style.BRIGHT}WBTC Amount must be greater than 0.{Style.RESET_ALL}")
-        #     except ValueError:
-        #         print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+        while True:
+            try:
+                amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter WBTC Amount for Each Swap Tx [1 or 0.01 or 0.001, etc in decimals] -> {Style.RESET_ALL}").strip())
+                if amount > 0:
+                    self.wbtc_swap_amount = amount
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}WBTC Amount must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
 
     def print_add_lp_question(self):
         while True:
@@ -825,7 +860,34 @@ class Faroswap:
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
 
-        return option, choose
+        rotate = False
+        if choose in [1, 2]:
+            while True:
+                rotate = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip()
+
+                if rotate in ["y", "n"]:
+                    rotate = rotate == "y"
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter 'y' or 'n'.{Style.RESET_ALL}")
+
+        return option, choose, rotate
+    
+    async def check_connection(self, proxy_url=None):
+        connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+        try:
+            async with ClientSession(connector=connector, timeout=ClientTimeout(total=30)) as session:
+                async with session.get(url="https://api.ipify.org?format=json", proxy=proxy, proxy_auth=proxy_auth) as response:
+                    response.raise_for_status()
+                    return True
+        except (Exception, ClientResponseError) as e:
+            self.log(
+                f"{Fore.CYAN + Style.BRIGHT}Status       :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} Connection Not 200 OK {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
     
     async def get_dodo_route(self, address: str, from_token: str, to_token: str, amount: int, use_proxy: bool, retries=5):
         for attempt in range(retries):
@@ -835,11 +897,11 @@ class Faroswap:
                 f"&apikey=a37546505892e1a952&slippage=3.225&source=dodoV2AndMixWasm&toTokenAddress={to_token}"
                 f"&fromTokenAddress={from_token}&userAddr={address}&estimateGas=true&fromAmount={amount}"
             )
-            proxy = self.get_next_proxy_for_account(address) if use_proxy else None
-            connector = ProxyConnector.from_url(proxy) if use_proxy else None
+            proxy_url = self.get_next_proxy_for_account(address) if use_proxy else None
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=30)) as session:
-                    async with session.get(url=url, headers=self.HEADERS) as response:
+                    async with session.get(url=url, headers=self.HEADERS, proxy=proxy, proxy_auth=proxy_auth) as response:
                         response.raise_for_status()
                         result = await response.json()
                         if result.get("status") != 200:
@@ -858,6 +920,24 @@ class Faroswap:
                     continue
 
                 return None
+            
+    async def process_check_connection(self, address: int, use_proxy: bool, rotate_proxy: bool):
+        while True:
+            proxy = self.get_next_proxy_for_account(address) if use_proxy else None
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}Proxy        :{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {proxy} {Style.RESET_ALL}"
+            )
+
+            is_valid = await self.check_connection(proxy)
+            if not is_valid:
+                if rotate_proxy:
+                    proxy = self.rotate_proxy_for_account(address)
+                    continue
+
+                return False
+            
+            return True
     
     async def process_perform_deposit(self, account: str, address: str, use_proxy: bool):
         tx_hash, block_number = await self.perform_deposit(account, address, use_proxy)
@@ -1127,42 +1207,48 @@ class Faroswap:
             await self.process_perform_add_dvm_liquidity(account, address, pair_address, base_token, quote_token, amount, use_proxy)
             await self.print_timer()
         
-    async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool):
-        proxy = self.get_next_proxy_for_account(address) if use_proxy else None
-        self.log(
-            f"{Fore.CYAN + Style.BRIGHT}Proxy        :{Style.RESET_ALL}"
-            f"{Fore.WHITE + Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-        )
+    async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool, rotate_proxy: bool):
+        is_valid = await self.process_check_connection(address, use_proxy, rotate_proxy)
+        if is_valid:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+            if not web3:
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}Status       :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Web3 Not Connected {Style.RESET_ALL}"
+                )
+                return
+            
+            self.used_nonce[address] = web3.eth.get_transaction_count(address, "pending")
 
-        if option == 1:
-            await self.process_option_1(account, address, use_proxy)
-
-        elif option == 2:
-            await self.process_option_2(account, address, use_proxy)
-
-        elif option == 3:
-            await self.process_option_3(account, address, use_proxy)
-
-        elif option == 4:
-            await self.process_option_4(account, address, use_proxy)
-
-        elif option == 5:
-            if self.dp_or_wd_option == 1:
+            if option == 1:
                 await self.process_option_1(account, address, use_proxy)
 
-            elif self.dp_or_wd_option == 2:
+            elif option == 2:
                 await self.process_option_2(account, address, use_proxy)
-                
-            await self.process_option_3(account, address, use_proxy)
 
-            await self.process_option_4(account, address, use_proxy)
+            elif option == 3:
+                await self.process_option_3(account, address, use_proxy)
+
+            elif option == 4:
+                await self.process_option_4(account, address, use_proxy)
+
+            elif option == 5:
+                if self.dp_or_wd_option == 1:
+                    await self.process_option_1(account, address, use_proxy)
+
+                elif self.dp_or_wd_option == 2:
+                    await self.process_option_2(account, address, use_proxy)
+                    
+                await self.process_option_3(account, address, use_proxy)
+
+                await self.process_option_4(account, address, use_proxy)
         
     async def main(self):
         try:
             with open('accounts.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
             
-            option, use_proxy_choice = self.print_question()
+            option, use_proxy_choice, rotate_proxy = self.print_question()
 
             self.pools = self.load_pools()
 
@@ -1199,7 +1285,7 @@ class Faroswap:
                             )
                             continue
 
-                        await self.process_accounts(account, address, option, use_proxy)
+                        await self.process_accounts(account, address, option, use_proxy, rotate_proxy)
                         await asyncio.sleep(3)
 
                 self.log(f"{Fore.CYAN + Style.BRIGHT}={Style.RESET_ALL}"*72)
