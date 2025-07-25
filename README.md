@@ -146,6 +146,7 @@ Handles:
 
 * Faucet mint
 * Deposit/lend/borrow
+* Auto Repay
 * Fully automated DeFi tasks
 
 ---
@@ -160,6 +161,7 @@ Handles:
 * USDT faucet claims
 * Auto trades
 * Auto Add & Withdraw Liquidity Pool
+* Auto Make Random Open & Close Potition
 
 ---
 
