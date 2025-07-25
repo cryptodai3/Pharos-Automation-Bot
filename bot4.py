@@ -55,6 +55,55 @@ class Brokex:
                 ]
             },
             {
+                "name": "getUserOpenIds",
+                "type": "function",
+                "stateMutability": "view",
+                "inputs": [
+                    { "internalType": "address", "name": "user", "type": "address" }
+                ],
+                "outputs": [
+                    { "internalType": "uint256[]", "name": "", "type": "uint256[]" }
+                ]
+            },
+            {
+                "inputs": [
+                    { "internalType": "uint256", "name": "id", "type": "uint256" }
+                ],
+                "name": "getOpenById",
+                "outputs": [
+                    {
+                        "internalType": "struct IBrokexStorage.Open",
+                        "name": "",
+                        "type": "tuple",
+                        "components": [
+                            { "internalType": "address", "name": "trader", "type": "address" },
+                            { "internalType": "uint256", "name": "id", "type": "uint256" },
+                            { "internalType": "uint256", "name": "assetIndex", "type": "uint256" },
+                            { "internalType": "bool",    "name": "isLong",     "type": "bool"    },
+                            { "internalType": "uint256", "name": "leverage",   "type": "uint256" },
+                            { "internalType": "uint256", "name": "openPrice",  "type": "uint256" },
+                            { "internalType": "uint256", "name": "sizeUsd",    "type": "uint256" },
+                            { "internalType": "uint256", "name": "timestamp",  "type": "uint256" },
+                            { "internalType": "uint256", "name": "stopLossPrice",   "type": "uint256" },
+                            { "internalType": "uint256", "name": "takeProfitPrice", "type": "uint256" },
+                            { "internalType": "uint256", "name": "liquidationPrice","type": "uint256" }
+                        ]
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "name": "closePosition",
+                "type": "function",
+                "stateMutability": "nonpayable",
+                "inputs": [
+                    { "internalType": "uint256", "name": "openId", "type": "uint256" },
+                    { "internalType": "bytes",   "name": "proof",  "type": "bytes"   }
+                ],
+                "outputs": []
+            },
+            {
                 "name": "depositLiquidity",
                 "type": "function",
                 "stateMutability": "nonpayable",
@@ -94,8 +143,10 @@ class Brokex:
         self.proxy_index = 0
         self.account_proxies = {}
         self.used_nonce = {}
-        self.trade_count = 0
-        self.trade_amount = 0
+        self.open_ids = {}
+        self.potition_option = 0
+        self.potition_count = 0
+        self.open_amount = 0
         self.deposit_lp_count = 0
         self.deposit_lp_amount = 0
         self.withdraw_lp_count = 0
@@ -122,7 +173,7 @@ class Brokex:
         print(Fore.YELLOW + Style.BRIGHT + "    🧑‍💻 Author     : YetiDAO")
         print(Fore.YELLOW + Style.BRIGHT + "    🌐 Status     : Running & Monitoring...")
         print(Fore.CYAN + Style.BRIGHT + "    ────────────────────────────────")
-        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v1.6 🚀")
+        print(Fore.MAGENTA + Style.BRIGHT + "    🧬 Powered by Cryptodai3 × YetiDAO | Buddy v2.0 🚀")
         print(Fore.LIGHTGREEN_EX + Style.BRIGHT + "═" * 60 + "\n")
 
     def format_seconds(self, seconds):
@@ -277,6 +328,46 @@ class Brokex:
             )
             return None
         
+    async def get_user_open_ids(self, address: str, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.TRADE_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
+            open_ids = token_contract.functions.getUserOpenIds(address).call()
+
+            return open_ids
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def get_open_data_by_id(self, address: str, open_id: int, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.TRADE_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
+            open_data = token_contract.functions.getOpenById(open_id).call()
+
+            return {
+                "trader": open_data[0],
+                "id": open_data[1],
+                "assetIndex": open_data[2],
+                "isLong": open_data[3],
+                "leverage": open_data[4],
+                "openPrice": open_data[5],
+                "sizeUsd": open_data[6],
+                "timestamp": open_data[7],
+                "stopLossPrice": open_data[8],
+                "takeProfitPrice": open_data[9],
+                "liquidationPrice": open_data[10]
+            }
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
     async def send_raw_transaction_with_retries(self, account, web3, tx, retries=5):
         for attempt in range(retries):
             try:
@@ -412,7 +503,7 @@ class Brokex:
         except Exception as e:
             raise Exception(f"Approving Token Contract Failed: {str(e)}")
 
-    async def perform_trade(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool, lev=1, sl=0, tp=0):
+    async def perform_open_potition(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool, lev=1, sl=0, tp=0):
         try:
             web3 = await self.get_web3_with_check(address, use_proxy)
 
@@ -420,9 +511,9 @@ class Brokex:
             asset_contract = web3.eth.contract(address=web3.to_checksum_address(asset_address), abi=self.ERC20_CONTRACT_ABI)
             decimals = asset_contract.functions.decimals().call()
             
-            trade_amount = int(self.trade_amount * (10 ** decimals))
+            open_amount = int(self.open_amount * (10 ** decimals))
 
-            await self.approving_token(account, address, self.TRADE_ROUTER_ADDRESS, asset_address, trade_amount, use_proxy)
+            await self.approving_token(account, address, self.TRADE_ROUTER_ADDRESS, asset_address, open_amount, use_proxy)
 
             proof = await self.get_proof(address, pair, use_proxy)
             if not proof:
@@ -430,13 +521,13 @@ class Brokex:
 
             token_contract = web3.eth.contract(address=web3.to_checksum_address(self.TRADE_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
 
-            position_data = token_contract.functions.openPosition(pair, proof['proof'], is_long, lev, trade_amount, sl, tp)
-            estimated_gas = position_data.estimate_gas({"from": address})
+            open_position_data = token_contract.functions.openPosition(pair, proof['proof'], is_long, lev, open_amount, sl, tp)
+            estimated_gas = open_position_data.estimate_gas({"from": address})
 
             max_priority_fee = web3.to_wei(1, "gwei")
             max_fee = max_priority_fee
 
-            position_tx = position_data.build_transaction({
+            open_position_tx = open_position_data.build_transaction({
                 "from": address,
                 "gas": int(estimated_gas * 1.2),
                 "maxFeePerGas": int(max_fee),
@@ -445,7 +536,46 @@ class Brokex:
                 "chainId": web3.eth.chain_id,
             })
 
-            tx_hash = await self.send_raw_transaction_with_retries(account, web3, position_tx)
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, open_position_tx)
+            receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+
+            block_number = receipt.blockNumber
+            self.used_nonce[address] += 1
+
+            return tx_hash, block_number
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None, None
+        
+    async def perform_close_potition(self, account: str, address: str, open_id: int, pair: int, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            proof = await self.get_proof(address, pair, use_proxy)
+            if not proof:
+                raise Exception("Failed to Fetch Proof")
+
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.TRADE_ROUTER_ADDRESS), abi=self.BROKEX_CONTRACT_ABI)
+
+            close_position_data = token_contract.functions.closePosition(open_id, proof['proof'])
+            estimated_gas = close_position_data.estimate_gas({"from": address})
+
+            max_priority_fee = web3.to_wei(1, "gwei")
+            max_fee = max_priority_fee
+
+            close_position_tx = close_position_data.build_transaction({
+                "from": address,
+                "gas": int(estimated_gas * 1.2),
+                "maxFeePerGas": int(max_fee),
+                "maxPriorityFeePerGas": int(max_priority_fee),
+                "nonce": self.used_nonce[address],
+                "chainId": web3.eth.chain_id,
+            })
+
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, close_position_tx)
             receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
 
             block_number = receipt.blockNumber
@@ -552,26 +682,58 @@ class Brokex:
             )
             await asyncio.sleep(1)
 
-    def print_trade_question(self):
+    def print_potition_option_question(self):
         while True:
             try:
-                trade_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Trade Count For Each Wallet -> {Style.RESET_ALL}").strip())
-                if trade_count > 0:
-                    self.trade_count = trade_count
+                print(f"{Fore.GREEN + Style.BRIGHT}Choose Potition Option:{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Open Potition{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Close Potition{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Skipped{Style.RESET_ALL}")
+                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3] -> {Style.RESET_ALL}").strip())
+
+                if option in [1, 2, 3]:
+                    option_type = (
+                        "Open Potition" if option == 1 else 
+                        "Close Potition" if option == 2 else 
+                        "Skipped"
+                    )
+                    print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
+
+                    if option == 1:
+                        self.print_potition_question("Open")
+                        self.print_open_question()
+
+                    elif option == 2:
+                        self.print_potition_question("Close")
+
+                    self.potition_option = option
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Trade Count must be > 0.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, or 3.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, or 3).{Style.RESET_ALL}")
+
+    def print_potition_question(self, type: str):
+        while True:
+            try:
+                potition_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}{type} Potition Count For Each Wallet -> {Style.RESET_ALL}").strip())
+                if potition_count > 0:
+                    self.potition_count = potition_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}{type} Potition Count must be > 0.{Style.RESET_ALL}")
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
-
+    
+    def print_open_question(self):
         while True:
             try:
-                trade_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Trade Amount [Min 10] -> {Style.RESET_ALL}").strip())
-                if trade_amount >= 10:
-                    self.trade_amount = trade_amount
+                open_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Open Potition Amount [Min 10] -> {Style.RESET_ALL}").strip())
+                if open_amount >= 10:
+                    self.open_amount = open_amount
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Trade Amount must be >= 10.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Open Potition Amount must be >= 10.{Style.RESET_ALL}")
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
 
@@ -679,41 +841,48 @@ class Brokex:
             try:
                 print(f"{Fore.GREEN + Style.BRIGHT}Select Option:{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}1. Claim Faucet{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}2. Random Trade{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}3. Deposit Liquidity{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}4. Withdraw Liquidity{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}5. Run All Features{Style.RESET_ALL}")
-                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4/5] -> {Style.RESET_ALL}").strip())
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Open Potition{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Close Potition{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}4. Deposit Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}5. Withdraw Liquidity{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}6. Run All Features{Style.RESET_ALL}")
+                option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4/5/6] -> {Style.RESET_ALL}").strip())
 
-                if option in [1, 2, 3, 4, 5]:
+                if option in [1, 2, 3, 4, 5, 6]:
                     option_type = (
                         "Claim Faucet" if option == 1 else 
-                        "Random Trade" if option == 2 else 
-                        "Deposit Liquidity" if option == 3 else 
-                        "Withdraw Liquidity" if option == 4 else 
+                        "Open Potition" if option == 2 else 
+                        "Close Potition" if option == 3 else 
+                        "Deposit Liquidity" if option == 4 else 
+                        "Withdraw Liquidity" if option == 5 else 
                         "Run All Features"
                     )
                     print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, 4, or 5.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, 4, 5, or 6.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4, or 5).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4, 5, or 6).{Style.RESET_ALL}")
 
         if option == 2:
-            self.print_trade_question()
+            self.print_potition_question("Open")
+            self.print_open_question()
+            self.print_delay_question()
+
+        if option == 3:
+            self.print_potition_question("Close")
             self.print_delay_question()
             
-        elif option == 3:
+        elif option == 4:
             self.print_deposit_lp_question()
             self.print_delay_question()
 
-        elif option == 4:
+        elif option == 5:
             self.print_withdraw_lp_question()
             self.print_delay_question()
             
-        elif option == 5:
-            self.print_trade_question()
+        elif option == 6:
+            self.print_potition_option_question()
             self.print_lp_option_question()
             self.print_delay_question()
 
@@ -834,14 +1003,43 @@ class Brokex:
                 f"{Fore.YELLOW+Style.BRIGHT} Already Claimed {Style.RESET_ALL}"
             )
 
-    async def process_perform_trade(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool):
-        tx_hash, block_number = await self.perform_trade(account, address, pair, is_long, use_proxy)
+    async def process_perform_open_potition(self, account: str, address: str, pair: int, is_long: bool, use_proxy: bool):
+        tx_hash, block_number = await self.perform_open_potition(account, address, pair, is_long, use_proxy)
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
 
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Trade Success {Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Open Potition Success {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer:{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
+            )
+        else:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+            )
+            
+    async def process_perform_close_potition(self, account: str, address: str, used_ids, open_id: int, pair: int, use_proxy: bool):
+        tx_hash, block_number = await self.perform_close_potition(account, address, open_id, pair, use_proxy)
+        if tx_hash and block_number:
+            explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
+
+            used_ids.add(open_id)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Close Potition Success {Style.RESET_ALL}"
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Block   :{Style.RESET_ALL}"
@@ -918,19 +1116,24 @@ class Brokex:
     async def process_option_1(self, account: str, address: str, use_proxy):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Faucet{Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT} Claim Faucet{Style.RESET_ALL}"
         )
 
         await self.process_perform_claim_faucet(account, address, use_proxy)
 
     async def process_option_2(self, account: str, address: str, use_proxy: bool):
-        for i in range(self.trade_count):
+        self.log(
+            f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT}Potition{Style.RESET_ALL}"
+        )
+
+        for i in range(self.potition_count):
             self.log(
                 f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
                 f"{Fore.BLUE+Style.BRIGHT} Trade {Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT}{i+1}{Style.RESET_ALL}"
                 f"{Fore.MAGENTA+Style.BRIGHT} Of {Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT}{self.trade_count}{Style.RESET_ALL}                                   "
+                f"{Fore.WHITE+Style.BRIGHT}{self.potition_count}{Style.RESET_ALL}                                   "
             )
 
             pairs = random.choice(self.pairs)
@@ -947,24 +1150,105 @@ class Brokex:
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Amount  :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {self.trade_amount} USDT {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.open_amount} USDT {Style.RESET_ALL}"
             )
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}   Pair    :{Style.RESET_ALL}"
                 f"{Fore.BLUE+Style.BRIGHT} {action} - {name} {Style.RESET_ALL}"
             )
 
-            if not balance or balance <= self.trade_amount:
+            if not balance or balance <= self.open_amount:
                 self.log(
                     f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} Insufficient USDT Token Balance {Style.RESET_ALL}"
                 )
                 return
             
-            await self.process_perform_trade(account, address, pair, is_long, use_proxy)
+            await self.process_perform_open_potition(account, address, pair, is_long, use_proxy)
             await self.print_timer()
 
     async def process_option_3(self, account: str, address: str, use_proxy: bool):
+        self.log(
+            f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT}Potition{Style.RESET_ALL}"
+        )
+
+        open_ids = await self.get_user_open_ids(address, use_proxy)
+        if not open_ids:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} No Open Ids Found {Style.RESET_ALL}"
+            )
+            return
+
+        self.open_ids[address] = open_ids
+
+        self.log(
+            f"{Fore.CYAN+Style.BRIGHT}   Status  :{Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT} Fetch {len(open_ids)} Open Ids Success {Style.RESET_ALL}"
+        )
+
+        used_ids = set()
+
+        for i in range(self.potition_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Trade {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT}{i+1}{Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT} Of {Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT}{self.potition_count}{Style.RESET_ALL}                                   "
+            )
+
+            available_ids = [oid for oid in self.open_ids[address] if oid not in used_ids]
+            if not available_ids:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Message :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} No more unique Open Ids available. Stopping early. {Style.RESET_ALL}"
+                )
+                break
+
+            open_id = random.choice(available_ids)
+
+            open_data = await self.get_open_data_by_id(address, open_id, use_proxy)
+            if not open_data:
+                continue
+            
+            pair = open_data["assetIndex"]
+            is_long = open_data["isLong"]
+            size = open_data["sizeUsd"]
+
+            name = (
+                "BTC_USDT" if pair == 0 else 
+                "ETH_USDT" if pair == 1 else 
+                "SOL_USDT" if pair == 10 else 
+                "XRP_USDT" if pair == 14 else 
+                "NaN_USDT"
+            )
+            formatted_size = size / 10**6
+            action = "Long" if is_long == True else "Short"
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Open Id :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {open_id} {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Size    :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {formatted_size} USDT {Style.RESET_ALL}"
+            )
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Pair    :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {action} - {name} {Style.RESET_ALL}"
+            )
+            
+            await self.process_perform_close_potition(account, address, used_ids, open_id, pair, use_proxy)
+            await self.print_timer()
+
+    async def process_option_4(self, account: str, address: str, use_proxy: bool):
+        self.log(
+            f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT}Liquidity Pool{Style.RESET_ALL}"
+        )
+
         for i in range(self.deposit_lp_count):
             self.log(
                 f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
@@ -995,7 +1279,12 @@ class Brokex:
             await self.process_perform_deposit_lp(account, address, use_proxy)
             await self.print_timer()
 
-    async def process_option_4(self, account: str, address: str, use_proxy: bool):
+    async def process_option_5(self, account: str, address: str, use_proxy: bool):
+        self.log(
+            f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
+            f"{Fore.GREEN+Style.BRIGHT}Liquidity Pool{Style.RESET_ALL}"
+        )
+
         for i in range(self.withdraw_lp_count):
             self.log(
                 f"{Fore.GREEN+Style.BRIGHT} ●{Style.RESET_ALL}"
@@ -1050,7 +1339,7 @@ class Brokex:
         elif option == 2:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Random Trade {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Open Potition {Style.RESET_ALL}"
             )
 
             await self.process_option_2(account, address, use_proxy)
@@ -1058,7 +1347,7 @@ class Brokex:
         elif option == 3:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Deposit Liquidity {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Close Potition {Style.RESET_ALL}"
             )
 
             await self.process_option_3(account, address, use_proxy)
@@ -1066,28 +1355,40 @@ class Brokex:
         elif option == 4:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT} Withdraw Liquidity {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Deposit Liquidity {Style.RESET_ALL}"
             )
 
             await self.process_option_4(account, address, use_proxy)
+
+        elif option == 5:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} Withdraw Liquidity {Style.RESET_ALL}"
+            )
+
+            await self.process_option_5(account, address, use_proxy)
 
         else:
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
                 f"{Fore.BLUE+Style.BRIGHT} Run All Features {Style.RESET_ALL}"
             )
-            
+
             await self.process_option_1(account, address, use_proxy)
             await asyncio.sleep(5)
+            
+            if self.potition_option == 1:
+                await self.process_option_2(account, address, use_proxy)
+            elif self.potition_option == 2:
+                await self.process_option_3(account, address, use_proxy)
 
-            await self.process_option_2(account, address, use_proxy)
             await asyncio.sleep(5)
 
             if self.lp_option == 1:
-                await self.process_option_3(account, address, use_proxy)
+                await self.process_option_4(account, address, use_proxy)
 
             elif self.lp_option == 2:
-                await self.process_option_4(account, address, use_proxy)
+                await self.process_option_5(account, address, use_proxy)
 
     async def main(self):
         try:
