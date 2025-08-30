@@ -15,7 +15,11 @@ A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything
 | `bot3.py` | OpenFi BOT         | Lending, borrowing & DeFi services |
 | `bot4.py` | Brokex BOT         | Faucet claim and trade automation  |
 | `bot5.py` | FaroSwap BOT       | Swap and liquidity automation      |
-| `bot6.py` | **AquaFlux BOT  ** | Auto Mint Standard & Premium NFT (need bind twitter)  |
+| `bot6.py` | AquaFlux BOT   | Auto Mint Standard & Premium NFT (need bind twitter)  |
+| `bot7.py` | Zenith Swap BOT      | Swap and liquidity automation    |
+| `bot8.py` | Pharos Name Service BOT         | Auto Mint Random .phrs Domain |
+| `bot9.py` | Grandline BOT         | Auto Claim All Available Badge  |
+| `bot10.py` | R2 Pharos BOT       | Swap and liquidity automation      |
 
 ---
 
@@ -78,6 +82,10 @@ python bot3.py  # OpenFi
 python bot4.py  # Brokex
 python bot5.py  # Faroswap
 python bot6.py  # AquaFlux
+python bot7.py  # Zenith Swap
+python bot8.py  # Pharos Name Service
+python bot9.py  # Grandline
+python bot10.py  # R2 Pharos
 ```
 
 ---
@@ -119,6 +127,30 @@ python bot6.py  # AquaFlux
 🔗 [AquaFlux](https://playground.aquaflux.pro/)  
 ✅ Auto Mint Standard NFT    
 ✅ Auto Mint Premium NFT (need bind twitter)        
+✅ Multi-account support  
+
+### `bot7.py` — Zenith Swap BOT
+🔗 [Zenith Swap](https://testnet.zenithswap.xyz/home)  
+✅ Auto Wrap PHRS to WPHRS  
+✅ Auto Unwrap WPHRS to PHRS  
+✅ Random Swap TX  
+✅ Add Liquidity  
+✅ Multi-account support  
+
+### `bot8.py` — Pharos Name Service BOT
+🔗 [Pharos Name Service](https://test.pharosname.com/)  
+✅ Auto Mint Random .phrs Domain  
+✅ Multi-account support  
+
+### `bot9.py` — Grandline BOT
+🔗 [Grandline](https://app.grandline.world/)  
+✅ Auto Claim All Available Badges  
+✅ Multi-account support  
+
+### `bot10.py` — R2 Pharos BOT
+🔗 [R2 Pharos](https://www.r2.money/)  
+✅ Auto Make R2 Swap TX  
+✅ Auto Make R2 Earn TX  
 ✅ Multi-account support    
 
 ---
@@ -133,9 +165,7 @@ pip install web3==6.15.0 eth-account==0.11.0
 ---
 
 ## ☕ Support the Developers
-**EVM:** `0x3b94Ff1611773171E06047C0041099CccCFC609F`  
-**TON:** `UQDDYNRWZI12zMfXYBoy300ydECC5uouMUFLd_yZa6ZO4Jsm`  
-**SOL:** `2PhLDFnyX8whHDMBbfGSFoLnVEsei6TYxyiqpDzPGyT1`  
+**EVM:** `0x3b94Ff1611773171E06047C0041099CccCFC609F`   
 
 ---
 
