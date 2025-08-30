@@ -11,19 +11,22 @@ wib = pytz.timezone('Asia/Jakarta')
 
 class OpenFi:
     def __init__(self) -> None:
-        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/54b49326c9f44b6e8730dc5dd4348421"
+        # self.RPC_URL = "https://testnet.dplabs-internal.com/"
+        self.RPC_URL = "https://api.zan.top/node/v1/pharos/testnet/1c23cdaa41f34fd2a74fc375d2400c47"
         self.PHRS_CONTRACT_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
         self.WPHRS_CONTRACT_ADDRESS = "0x3019B247381c850ab53Dc0EE53bCe7A07Ea9155f"
         self.USDC_CONTRACT_ADDRESS = "0x72df0bcd7276f2dFbAc900D1CE63c272C4BCcCED"
         self.USDT_CONTRACT_ADDRESS = "0xD4071393f8716661958F766DF660033b3d35fD29"
+        self.WETH_CONTRACT_ADDRESS = "0x4E28826d32F1C398DED160DC16Ac6873357d048f"
         self.WBTC_CONTRACT_ADDRESS = "0x8275c526d1bCEc59a31d673929d3cE8d108fF5c7"
         self.GOLD_CONTRACT_ADDRESS = "0xAaf03Cbb486201099EdD0a52E03Def18cd0c7354"
         self.TSLA_CONTRACT_ADDRESS = "0xA778b48339d3c6b4Bc5a75B37c6Ce210797076b1"
         self.NVIDIA_CONTRACT_ADDRESS = "0xAaF3A7F1676385883593d7Ea7ea4FcCc675EE5d6"
         self.FAUCET_ROUTER_ADDRESS = "0x0E29d74Af0489f4B08fBfc774e25C0D3b5f43285"
-        self.WRAPPED_ROUTER_ADDRESS = "0xa7994d63Ec1DED6D1bE5163EE5e75658b3f2cbE4"
+        self.WRAPPED_ROUTER_ADDRESS = "0x974828e18bff1E71780f9bE19d0DFf4Fe1f61fCa"
         self.POOL_ROUTER_ADDRESS = "0x11d1ca4012d94846962bca2FBD58e5A27ddcBfC5"
-        self.LENDING_POOL_ADRESS = "0x0000000000000000000000000000000000000000"
+        self.POOL_PROVIDER_ADDRESS = "0x54cb4f6C4c12105B48b11e21d78becC32Ef694EC"
+        self.LENDING_POOL_ADDRESS = "0x0000000000000000000000000000000000000000"
         self.ERC20_CONTRACT_ABI = json.loads('''[
             {"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"address","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"allowance","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
@@ -33,23 +36,98 @@ class OpenFi:
         self.OPENFI_CONTRACT_ABI = [
             {
                 "type": "function",
+                "name": "isMintable",
+                "stateMutability": "view",
+                "inputs": [
+                    { "internalType": "address", "name": "asset", "type": "address" }
+                ],
+                "outputs": [
+                    { "internalType": "bool", "name": "", "type": "bool" }
+                ]
+            },
+            {
+                "type": "function",
+                "name": "getUserReserveData",
+                "stateMutability": "view",
+                "inputs": [
+                    { "internalType": "address", "name": "asset", "type": "address" },
+                    { "internalType": "address", "name": "user", "type": "address" }
+                ],
+                "outputs": [
+                    { "internalType": "uint256", "name": "currentBTokenBalance", "type": "uint256" },
+                    { "internalType": "uint256", "name": "currentStableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "currentVariableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "principalStableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "scaledVariableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "stableBorrowRate", "type": "uint256" },
+                    { "internalType": "uint256", "name": "liquidityRate", "type": "uint256" },
+                    { "internalType": "uint40", "name": "stableRateLastUpdated", "type": "uint40" },
+                    { "internalType": "bool", "name": "usageAsCollateralEnabled", "type": "bool" }
+                ]
+            },
+            {
+                "type": "function",
+                "name": "getReserveConfigurationData",
+                "stateMutability": "view",
+                "inputs": [
+                    { "internalType": "address", "name": "asset", "type": "address" }
+                ],
+                "outputs": [
+                    { "internalType": "uint256", "name": "decimals", "type": "uint256" },
+                    { "internalType": "uint256", "name": "ltv", "type": "uint256" },
+                    { "internalType": "uint256", "name": "liquidationThreshold", "type": "uint256" },
+                    { "internalType": "uint256", "name": "liquidationBonus", "type": "uint256" },
+                    { "internalType": "uint256", "name": "reserveFactor", "type": "uint256" },
+                    { "internalType": "bool", "name": "usageAsCollateralEnabled", "type": "bool" },
+                    { "internalType": "bool", "name": "borrowingEnabled", "type": "bool" },
+                    { "internalType": "bool", "name": "stableBorrowRateEnabled", "type": "bool" },
+                    { "internalType": "bool", "name": "isActive", "type": "bool" },
+                    { "internalType": "bool", "name": "isFrozen", "type": "bool" }
+                ]
+            },
+            {
+                "type": "function",
+                "name": "getReserveData",
+                "stateMutability": "view",
+                "inputs": [
+                    { "internalType": "address", "name": "asset", "type": "address" }
+                ],
+                "outputs": [
+                    { "internalType": "uint256", "name": "unbacked", "type": "uint256" },
+                    { "internalType": "uint256", "name": "accruedToTreasuryScaled", "type": "uint256" },
+                    { "internalType": "uint256", "name": "totalBToken", "type": "uint256" },
+                    { "internalType": "uint256", "name": "totalStableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "totalVariableDebt", "type": "uint256" },
+                    { "internalType": "uint256", "name": "liquidityRate", "type": "uint256" },
+                    { "internalType": "uint256", "name": "variableBorrowRate", "type": "uint256" },
+                    { "internalType": "uint256", "name": "stableBorrowRate", "type": "uint256" },
+                    { "internalType": "uint256", "name": "averageStableBorrowRate", "type": "uint256" },
+                    { "internalType": "uint256", "name": "liquidityIndex", "type": "uint256" },
+                    { "internalType": "uint256", "name": "variableBorrowIndex", "type": "uint256" },
+                    { "internalType": "uint40", "name": "lastUpdateTimestamp", "type": "uint40" }
+                ]
+            },
+            {
+                "type": "function",
                 "name": "mint",
                 "stateMutability": "nonpayable",
                 "inputs": [
-                    { "internalType": "address", "name": "_asset", "type": "address" },
-                    { "internalType": "address", "name": "_account", "type": "address" },
-                    { "internalType": "uint256", "name": "_amount", "type": "uint256" }
+                    { "internalType": "address", "name": "token", "type": "address" },
+                    { "internalType": "address", "name": "to", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" }
                 ],
-                "outputs": []
+                "outputs": [
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                ]
             },
             {
                 "type": "function",
                 "name": "depositETH",
                 "stateMutability": "payable",
                 "inputs": [
-                    { "name": "lendingPool", "type": "address" },
-                    { "name": "onBehalfOf", "type": "address" },
-                    { "name": "referralCode", "type": "uint16" }
+                    { "internalType": "address", "name": "", "type": "address" },
+                    { "internalType": "address", "name": "onBehalfOf", "type": "address" },
+                    { "internalType": "uint16", "name": "referralCode", "type": "uint16" }
                 ],
                 "outputs": []
             },
@@ -58,10 +136,10 @@ class OpenFi:
                 "name": "supply",
                 "stateMutability": "nonpayable",
                 "inputs": [
-                    { "name": "asset", "type": "address" },
-                    { "name": "amount", "type": "uint256" },
-                    { "name": "onBehalfOf", "type": "address" },
-                    { "name": "referralCode", "type": "uint16" }
+                    { "internalType": "address", "name": "asset", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                    { "internalType": "address", "name": "onBehalfOf", "type": "address" },
+                    { "internalType": "uint16", "name": "referralCode", "type": "uint16" }
                 ],
                 "outputs": []
             },
@@ -70,11 +148,11 @@ class OpenFi:
                 "name": "borrow",
                 "stateMutability": "nonpayable",
                 "inputs": [
-                    { "name": "asset", "type": "address" },
-                    { "name": "amount", "type": "uint256" },
-                    { "name": "interestRateMode", "type": "uint256" },
-                    { "name": "referralCode", "type": "uint16" },
-                    { "name": "onBehalfOf", "type": "address" }
+                    { "internalType": "address", "name": "asset", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                    { "internalType": "uint256", "name": "interestRateMode", "type": "uint256" },
+                    { "internalType": "uint16", "name": "referralCode", "type": "uint16" },
+                    { "internalType": "address", "name": "onBehalfOf", "type": "address" }
                 ],
                 "outputs": []
             },
@@ -97,21 +175,28 @@ class OpenFi:
                 "name": "withdraw",
                 "stateMutability": "nonpayable",
                 "inputs": [
-                    { "name": "asset", "type": "address" },
-                    { "name": "amount", "type": "uint256" },
-                    { "name": "to", "type": "address" }
+                    { "internalType": "address", "name": "asset", "type": "address" },
+                    { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                    { "internalType": "address", "name": "to", "type": "address" }
                 ],
-                "outputs": []
+                "outputs": [
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                ]
             }
         ]
         self.proxies = []
         self.proxy_index = 0
         self.account_proxies = {}
         self.used_nonce = {}
+        self.deposit_count = 0
         self.deposit_amount = 0
+        self.supply_count = 0
         self.supply_amount = 0
+        self.borrow_count = 0
         self.borrow_amount = 0
+        self.repay_count = 0
         self.repay_amount = 0
+        self.withdraw_count = 0
         self.withdraw_amount = 0
         self.min_delay = 0
         self.max_delay = 0
@@ -142,23 +227,14 @@ class OpenFi:
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
     
-    async def load_proxies(self, use_proxy_choice: bool):
+    async def load_proxies(self):
         filename = "proxy.txt"
         try:
-            if use_proxy_choice == 1:
-                async with ClientSession(timeout=ClientTimeout(total=30)) as session:
-                    async with session.get("https://raw.githubusercontent.com/monosans/proxy-list/refs/heads/main/proxies/http.txt") as response:
-                        response.raise_for_status()
-                        content = await response.text()
-                        with open(filename, 'w') as f:
-                            f.write(content)
-                        self.proxies = [line.strip() for line in content.splitlines() if line.strip()]
-            else:
-                if not os.path.exists(filename):
-                    self.log(f"{Fore.RED + Style.BRIGHT}File {filename} Not Found.{Style.RESET_ALL}")
-                    return
-                with open(filename, 'r') as f:
-                    self.proxies = [line.strip() for line in f.read().splitlines() if line.strip()]
+            if not os.path.exists(filename):
+                self.log(f"{Fore.RED + Style.BRIGHT}File {filename} Not Found.{Style.RESET_ALL}")
+                return
+            with open(filename, 'r') as f:
+                self.proxies = [line.strip() for line in f.read().splitlines() if line.strip()]
             
             if not self.proxies:
                 self.log(f"{Fore.RED + Style.BRIGHT}No Proxies Found.{Style.RESET_ALL}")
@@ -224,7 +300,7 @@ class OpenFi:
             return address
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}Status    :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}Status  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Generate Address Failed {Style.RESET_ALL}"
                 f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                 f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}                  "
@@ -237,6 +313,22 @@ class OpenFi:
             return mask_account
         except Exception as e:
             return None
+        
+    def generate_random_option(self):
+        assets = [
+            ("WPHRS", self.WPHRS_CONTRACT_ADDRESS, 18),
+            ("USDC", self.USDC_CONTRACT_ADDRESS, 6),
+            ("USDT", self.USDT_CONTRACT_ADDRESS, 6),
+            ("WETH", self.WETH_CONTRACT_ADDRESS, 18),
+            ("WBTC", self.WBTC_CONTRACT_ADDRESS, 8),
+            ("GOLD", self.GOLD_CONTRACT_ADDRESS, 18),
+            ("TSLA", self.TSLA_CONTRACT_ADDRESS, 18),
+            ("NVIDIA", self.NVIDIA_CONTRACT_ADDRESS, 18)
+        ]
+
+        ticker, asset_address, decimals = random.choice(assets)
+
+        return ticker, asset_address, decimals
         
     async def get_web3_with_check(self, address: str, use_proxy: bool, retries=3, timeout=60):
         request_kwargs = {"timeout": timeout}
@@ -274,7 +366,7 @@ class OpenFi:
             return token_balance
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None
@@ -289,7 +381,10 @@ class OpenFi:
             except TransactionNotFound:
                 pass
             except Exception as e:
-                pass
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} [Attempt {attempt + 1}] Send TX Error: {str(e)} {Style.RESET_ALL}"
+                )
             await asyncio.sleep(2 ** attempt)
         raise Exception("Transaction Hash Not Found After Maximum Retries")
 
@@ -301,9 +396,111 @@ class OpenFi:
             except TransactionNotFound:
                 pass
             except Exception as e:
-                pass
+                self.log(
+                    f"{Fore.CYAN + Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW + Style.BRIGHT} [Attempt {attempt + 1}] Wait for Receipt Error: {str(e)} {Style.RESET_ALL}"
+                )
             await asyncio.sleep(2 ** attempt)
         raise Exception("Transaction Receipt Not Found After Maximum Retries")
+        
+    async def check_faucet_status(self, address: str, asset_address, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            contract_address = web3.to_checksum_address(self.FAUCET_ROUTER_ADDRESS)
+            token_contract = web3.eth.contract(address=contract_address, abi=self.OPENFI_CONTRACT_ABI)
+            is_mintable = token_contract.functions.isMintable(web3.to_checksum_address(asset_address)).call()
+
+            return is_mintable
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def get_supplied_balance(self, address: str, asset_address, decimals: int, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            asset = web3.to_checksum_address(asset_address)
+
+            contract_address = web3.to_checksum_address(self.POOL_PROVIDER_ADDRESS)
+            token_contract = web3.eth.contract(address=contract_address, abi=self.OPENFI_CONTRACT_ABI)
+            user_reserve_data = token_contract.functions.getUserReserveData(asset, address).call()
+            
+            supplied_balance = user_reserve_data[0] / (10 ** decimals)
+
+            return supplied_balance
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def get_borrowed_balance(self, address: str, asset_address, decimals: int, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            asset = web3.to_checksum_address(asset_address)
+
+            contract_address = web3.to_checksum_address(self.POOL_PROVIDER_ADDRESS)
+            token_contract = web3.eth.contract(address=contract_address, abi=self.OPENFI_CONTRACT_ABI)
+            user_reserve_data = token_contract.functions.getUserReserveData(asset, address).call()
+
+            stable_debt     = user_reserve_data[1]
+            variable_debt   = user_reserve_data[2]
+
+            total_debt = (stable_debt + variable_debt) / (10 ** decimals)
+
+            return total_debt
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
+        
+    async def get_available_borrowed_balance(self, address: str, asset_address, decimals: int, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            asset = web3.to_checksum_address(asset_address)
+
+            contract_address = web3.to_checksum_address(self.POOL_PROVIDER_ADDRESS)
+            token_contract = web3.eth.contract(address=contract_address, abi=self.OPENFI_CONTRACT_ABI)
+
+            user_reserve_data = token_contract.functions.getUserReserveData(asset, address).call()
+            supplied_balance = user_reserve_data[0]
+            stable_debt = user_reserve_data[1]
+            variable_debt = user_reserve_data[2]
+
+            configuration_data = token_contract.functions.getReserveConfigurationData(asset).call()
+            ltv = configuration_data[1] 
+
+            reserve_data = token_contract.functions.getReserveData(asset).call()
+            total_token = reserve_data[2]
+            total_stable_debt = reserve_data[3]
+            total_variable_debt = reserve_data[4]
+
+            available_liquidity = total_token - (total_stable_debt + total_variable_debt)
+
+            total_debt = stable_debt + variable_debt
+            max_borrow_from_collateral = (supplied_balance * ltv) // 10000
+            available_to_borrow = max_borrow_from_collateral - total_debt
+            if available_to_borrow < 0:
+                available_to_borrow = 0
+
+            available_to_borrow = min(available_to_borrow, available_liquidity) / (10 ** decimals)
+
+            return available_to_borrow
+        except Exception as e:
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
+                f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+            )
+            return None
         
     async def mint_faucet(self, account: str, address: str, asset_address: str, use_proxy: bool):
         try:
@@ -313,13 +510,12 @@ class OpenFi:
             router_contract = web3.eth.contract(address=router_address, abi=self.OPENFI_CONTRACT_ABI)
 
             asset_address = web3.to_checksum_address(asset_address)
-            target_address = web3.to_checksum_address(address)
-
             asset_contract = web3.eth.contract(address=asset_address, abi=self.ERC20_CONTRACT_ABI)
+
             decimals = asset_contract.functions.decimals().call()
 
             amount_to_wei = int(100 * (10 ** decimals))
-            mint_data = router_contract.functions.mint(asset_address, target_address, amount_to_wei)
+            mint_data = router_contract.functions.mint(asset_address, address, amount_to_wei)
             estimated_gas = mint_data.estimate_gas({"from": address})
 
             max_priority_fee = web3.to_wei(1, "gwei")
@@ -343,7 +539,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -382,7 +578,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -399,7 +595,7 @@ class OpenFi:
 
             allowance = token_contract.functions.allowance(address, spender).call()
             if allowance < amount_to_wei:
-                approve_data = token_contract.functions.approve(spender, amount_to_wei)
+                approve_data = token_contract.functions.approve(spender, 2**256 - 1)
                 estimated_gas = approve_data.estimate_gas({"from": address})
 
                 max_priority_fee = web3.to_wei(1, "gwei")
@@ -423,19 +619,19 @@ class OpenFi:
                 explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
                 
                 self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}     Approve :{Style.RESET_ALL}"
-                    f"{Fore.GREEN+Style.BRIGHT} Success {Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}   Approve  :{Style.RESET_ALL}"
+                    f"{Fore.GREEN+Style.BRIGHT} Success {Style.RESET_ALL}                                   "
                 )
                 self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                     f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
                 )
                 self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                     f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
                 )
                 self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                     f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
                 )
                 await self.print_timer()
@@ -482,7 +678,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -523,7 +719,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -566,7 +762,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -607,7 +803,7 @@ class OpenFi:
             return tx_hash, block_number
         except Exception as e:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Message :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Message  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
             )
             return None, None
@@ -628,7 +824,18 @@ class OpenFi:
     def print_deposit_question(self):
          while True:
             try:
-                deposit_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Deposit Amount ( PHRS to WPHRS ) -> {Style.RESET_ALL}").strip())
+                deposit_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Deposit Count -> {Style.RESET_ALL}").strip())
+                if deposit_count > 0:
+                    self.deposit_count = deposit_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Deposit Count must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+         
+         while True:
+            try:
+                deposit_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Deposit Amount [PHRS] -> {Style.RESET_ALL}").strip())
                 if deposit_amount > 0:
                     self.deposit_amount = deposit_amount
                     break
@@ -640,7 +847,18 @@ class OpenFi:
     def print_supply_question(self):
         while True:
             try:
-                supply_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Supply Amount For Each Tokens -> {Style.RESET_ALL}").strip())
+                supply_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Supply Count -> {Style.RESET_ALL}").strip())
+                if supply_count > 0:
+                    self.supply_count = supply_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Supply Count must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+         
+        while True:
+            try:
+                supply_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Supply Amount [ERC20] -> {Style.RESET_ALL}").strip())
                 if supply_amount > 0:
                     self.supply_amount = supply_amount
                     break
@@ -652,7 +870,18 @@ class OpenFi:
     def print_borrow_question(self):
         while True:
             try:
-                borrow_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Borrow Amount For Each Tokens -> {Style.RESET_ALL}").strip())
+                borrow_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Borrow Count -> {Style.RESET_ALL}").strip())
+                if borrow_count > 0:
+                    self.borrow_count = borrow_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Borrow Count must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+         
+        while True:
+            try:
+                borrow_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Borrow Amount [ERC20] -> {Style.RESET_ALL}").strip())
                 if borrow_amount > 0:
                     self.borrow_amount = borrow_amount
                     break
@@ -664,7 +893,18 @@ class OpenFi:
     def print_repay_question(self):
         while True:
             try:
-                repay_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Repay Amount For Each Tokens -> {Style.RESET_ALL}").strip())
+                repay_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Repay Count -> {Style.RESET_ALL}").strip())
+                if repay_count > 0:
+                    self.repay_count = repay_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Repay Count must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+         
+        while True:
+            try:
+                repay_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Repay Amount [ERC20] -> {Style.RESET_ALL}").strip())
                 if repay_amount > 0:
                     self.repay_amount = repay_amount
                     break
@@ -676,7 +916,18 @@ class OpenFi:
     def print_withdraw_question(self):
         while True:
             try:
-                withdraw_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Withdraw Amount For Each Tokens -> {Style.RESET_ALL}").strip())
+                withdraw_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Withdraw Count -> {Style.RESET_ALL}").strip())
+                if withdraw_count > 0:
+                    self.withdraw_count = withdraw_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Withdraw Count must be greater than 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a float or decimal number.{Style.RESET_ALL}")
+         
+        while True:
+            try:
+                withdraw_amount = float(input(f"{Fore.YELLOW + Style.BRIGHT}Enter Withdraw Amount [ERC20] -> {Style.RESET_ALL}").strip())
                 if withdraw_amount > 0:
                     self.withdraw_amount = withdraw_amount
                     break
@@ -712,23 +963,23 @@ class OpenFi:
         while True:
             try:
                 print(f"{Fore.GREEN + Style.BRIGHT}Select Option:{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}1. Mint Faucet{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}2. Deposit{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}3. Supply{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}4. Borrow{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}5. Repay{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}6. Withdraw{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Mint Faucets{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Deposit PHRS{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}3. Supply Assets{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}4. Borrow Assets{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}5. Repay Assets{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}6. Withdraw Assets{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}7. Run All Features{Style.RESET_ALL}")
                 option = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3/4/5/6/7] -> {Style.RESET_ALL}").strip())
 
                 if option in [1, 2, 3, 4, 5, 6, 7]:
                     option_type = (
-                        "Mint Faucet" if option == 1 else 
-                        "Deposit" if option == 2 else 
-                        "Supply" if option == 3 else
-                        "Borrow" if option == 4 else
-                        "Repay" if option == 5 else
-                        "Withdraw" if option == 6 else
+                        "Mint Faucets" if option == 1 else 
+                        "Deposit PHRS" if option == 2 else 
+                        "Supply Assets" if option == 3 else
+                        "Borrow Assets" if option == 4 else
+                        "Repay Assets" if option == 5 else
+                        "Withdraw Assets" if option == 6 else
                         "Run All Features"
                     )
                     print(f"{Fore.GREEN + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
@@ -771,36 +1022,34 @@ class OpenFi:
 
         while True:
             try:
-                print(f"{Fore.WHITE + Style.BRIGHT}1. Run With Free Proxyscrape Proxy{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}2. Run With Private Proxy{Style.RESET_ALL}")
-                print(f"{Fore.WHITE + Style.BRIGHT}3. Run Without Proxy{Style.RESET_ALL}")
-                choose = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3] -> {Style.RESET_ALL}").strip())
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Run With Proxy{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}2. Run Without Proxy{Style.RESET_ALL}")
+                proxy_choice = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2] -> {Style.RESET_ALL}").strip())
 
-                if choose in [1, 2, 3]:
+                if proxy_choice in [1, 2]:
                     proxy_type = (
-                        "With Free Proxyscrape" if choose == 1 else 
-                        "With Private" if choose == 2 else 
+                        "With" if proxy_choice == 1 else 
                         "Without"
                     )
                     print(f"{Fore.GREEN + Style.BRIGHT}Run {proxy_type} Proxy Selected.{Style.RESET_ALL}")
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2 or 3.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1 or 2.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2 or 3).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1 or 2).{Style.RESET_ALL}")
 
-        rotate = False
-        if choose in [1, 2]:
+        rotate_proxy = False
+        if proxy_choice == 1:
             while True:
-                rotate = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip()
+                rotate_proxy = input(f"{Fore.BLUE + Style.BRIGHT}Rotate Invalid Proxy? [y/n] -> {Style.RESET_ALL}").strip()
 
-                if rotate in ["y", "n"]:
-                    rotate = rotate == "y"
+                if rotate_proxy in ["y", "n"]:
+                    rotate_proxy = rotate_proxy == "y"
                     break
                 else:
                     print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter 'y' or 'n'.{Style.RESET_ALL}")
 
-        return option, choose, rotate
+        return option, proxy_choice, rotate_proxy
     
     async def check_connection(self, proxy_url=None):
         connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
@@ -811,7 +1060,7 @@ class OpenFi:
                     return True
         except (Exception, ClientResponseError) as e:
             self.log(
-                f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}Status  :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Connection Not 200 OK {Style.RESET_ALL}"
                 f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                 f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
@@ -822,7 +1071,7 @@ class OpenFi:
         while True:
             proxy = self.get_next_proxy_for_account(address) if use_proxy else None
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}Proxy     :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}Proxy   :{Style.RESET_ALL}"
                 f"{Fore.WHITE + Style.BRIGHT} {proxy} {Style.RESET_ALL}"
             )
 
@@ -830,6 +1079,7 @@ class OpenFi:
             if not is_valid:
                 if rotate_proxy:
                     proxy = self.rotate_proxy_for_account(address)
+                    await asyncio.sleep(1)
                     continue
 
                 return False
@@ -837,29 +1087,36 @@ class OpenFi:
             return True
     
     async def process_mint_faucet(self, account: str, address: str, asset_address: str, ticker: str, use_proxy: bool):
-        tx_hash, block_number = await self.mint_faucet(account, address, asset_address, use_proxy)
-        if tx_hash and block_number:
-            explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Mint 100 {ticker} Faucet Success {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
-            )
+        is_mintable = await self.check_faucet_status(address, asset_address, use_proxy)
+        if is_mintable:
+            tx_hash, block_number = await self.mint_faucet(account, address, asset_address, use_proxy)
+            if tx_hash and block_number:
+                explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.GREEN+Style.BRIGHT} Mint 100 {ticker} Faucet Success {Style.RESET_ALL}                                   "
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
+                )
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
+                    f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
+                )
+            else:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+                )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.YELLOW+Style.BRIGHT} Not Able to Mint {Style.RESET_ALL}"
             )
 
     async def process_perform_deposit(self, account: str, address: str, deposit_amount: float, use_proxy: bool):
@@ -867,24 +1124,24 @@ class OpenFi:
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Deposit {deposit_amount} PHRS Success {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Deposit {deposit_amount} PHRS Success {Style.RESET_ALL}                                   "
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
             )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
 
@@ -893,24 +1150,24 @@ class OpenFi:
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Supply {supply_amount} {ticker} Success {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Supply {supply_amount} {ticker} Success {Style.RESET_ALL}                                   "
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
             )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
 
@@ -919,24 +1176,24 @@ class OpenFi:
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Borrow {borrow_amount} {ticker} Success {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Borrow {borrow_amount} {ticker} Success {Style.RESET_ALL}                                   "
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
             )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
             
@@ -945,24 +1202,24 @@ class OpenFi:
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Repay {repay_amount} {ticker} Success {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Repay {repay_amount} {ticker} Success {Style.RESET_ALL}                                   "
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
             )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
 
@@ -971,46 +1228,42 @@ class OpenFi:
         if tx_hash and block_number:
             explorer = f"https://testnet.pharosscan.xyz/tx/{tx_hash}"
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.GREEN+Style.BRIGHT} Withdraw {withdraw_amount} {ticker} Success {Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} Withdraw {withdraw_amount} {ticker} Success {Style.RESET_ALL}                                   "
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Block   :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Block    :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {block_number} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Tx Hash :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Tx Hash  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {tx_hash} {Style.RESET_ALL}"
             )
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Explorer:{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Explorer :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {explorer} {Style.RESET_ALL}"
             )
         else:
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                 f"{Fore.RED+Style.BRIGHT} Perform On-Chain Failed {Style.RESET_ALL}"
             )
 
     async def process_option_1(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Mint Faucet{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Mint{Style.RESET_ALL}                                   "
         )
 
-        for asset_address in [
-                self.GOLD_CONTRACT_ADDRESS, self.TSLA_CONTRACT_ADDRESS, self.NVIDIA_CONTRACT_ADDRESS
+        for ticker, asset_address in [
+                ("GOLD", self.GOLD_CONTRACT_ADDRESS), 
+                ("TSLA", self.TSLA_CONTRACT_ADDRESS), 
+                ("NVIDIA", self.NVIDIA_CONTRACT_ADDRESS)
             ]:
-            
-            ticker = ( 
-                "GOLD" if asset_address == self.GOLD_CONTRACT_ADDRESS else
-                "TSLA" if asset_address == self.TSLA_CONTRACT_ADDRESS else
-                "NVIDA"
-            )
 
             self.log(
-                f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT}{ticker}{Style.RESET_ALL}                            "
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {ticker} {Style.RESET_ALL}                                   "
             )
 
             await self.process_mint_faucet(account, address, asset_address, ticker, use_proxy)
@@ -1019,77 +1272,82 @@ class OpenFi:
     async def process_option_2(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Deposit{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Deposit{Style.RESET_ALL}                                   "
         )
 
-        self.log(
-            f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-            f"{Fore.BLUE+Style.BRIGHT}PHRS to WPHRS{Style.RESET_ALL}                            "
-        )
-
-        balance = await self.get_token_balance(address, self.PHRS_CONTRACT_ADDRESS, use_proxy)
-
-        self.log(
-            f"{Fore.CYAN+Style.BRIGHT}     Balance :{Style.RESET_ALL}"
-            f"{Fore.WHITE+Style.BRIGHT} {balance} PHRS {Style.RESET_ALL}"
-        )
-        self.log(
-            f"{Fore.CYAN+Style.BRIGHT}     Amount  :{Style.RESET_ALL}"
-            f"{Fore.WHITE+Style.BRIGHT} {self.deposit_amount} PHRS {Style.RESET_ALL}"
-        )
-
-        if not balance or balance <= self.deposit_amount:
+        for i in range(self.deposit_count):
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
-                f"{Fore.YELLOW+Style.BRIGHT} Insufficient PHRS Token Balance {Style.RESET_ALL}"
+                f"{Fore.GREEN+Style.BRIGHT} ● {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT}Deposit{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {i+1} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}Of{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.deposit_count} {Style.RESET_ALL}                                   "
             )
-            return
 
-        await self.process_perform_deposit(account, address, self.deposit_amount, use_proxy)
-        await self.print_timer()
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} PHRS {Style.RESET_ALL}                                   "
+            )
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Amount   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.deposit_amount} PHRS {Style.RESET_ALL}"
+            )
+
+            balance = await self.get_token_balance(address, self.PHRS_CONTRACT_ADDRESS, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Balance  :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {balance} PHRS {Style.RESET_ALL}"
+            )
+
+            if not balance or balance <= self.deposit_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Insufficient PHRS Token Balance {Style.RESET_ALL}"
+                )
+                return
+
+            await self.process_perform_deposit(account, address, self.deposit_amount, use_proxy)
+            await self.print_timer()
 
     async def process_option_3(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Supply{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Supply{Style.RESET_ALL}                                   "
         )
 
-        for asset_address in [
-                self.WPHRS_CONTRACT_ADDRESS, self.USDC_CONTRACT_ADDRESS, 
-                self.USDT_CONTRACT_ADDRESS, self.WBTC_CONTRACT_ADDRESS, 
-                self.GOLD_CONTRACT_ADDRESS, self.TSLA_CONTRACT_ADDRESS, 
-                self.NVIDIA_CONTRACT_ADDRESS
-            ]:
-            
-            ticker = ( 
-                "WPHRS" if asset_address == self.WPHRS_CONTRACT_ADDRESS else
-                "USDC" if asset_address == self.USDC_CONTRACT_ADDRESS else
-                "USDT" if asset_address == self.USDT_CONTRACT_ADDRESS else 
-                "WBTC" if asset_address == self.WBTC_CONTRACT_ADDRESS else 
-                "GOLD" if asset_address == self.GOLD_CONTRACT_ADDRESS else
-                "TSLA" if asset_address == self.TSLA_CONTRACT_ADDRESS else
-                "NVIDA"
+        for i in range(self.supply_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ● {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT}Supply{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {i+1} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}Of{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.supply_count} {Style.RESET_ALL}                                   "
+            )
+
+            ticker, asset_address, decimals = self.generate_random_option()
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {ticker} {Style.RESET_ALL}                                   "
             )
 
             self.log(
-                f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT}{ticker}{Style.RESET_ALL}                            "
+                f"{Fore.CYAN+Style.BRIGHT}   Amount   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.supply_amount} {ticker} {Style.RESET_ALL}"
             )
 
             balance = await self.get_token_balance(address, asset_address, use_proxy)
 
             self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Balance :{Style.RESET_ALL}"
+                f"{Fore.CYAN+Style.BRIGHT}   Balance  :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {balance} {ticker} {Style.RESET_ALL}"
-            )
-            self.log(
-                f"{Fore.CYAN+Style.BRIGHT}     Amount  :{Style.RESET_ALL}"
-                f"{Fore.WHITE+Style.BRIGHT} {self.supply_amount} {ticker} {Style.RESET_ALL}"
             )
 
             if not balance or balance <= self.supply_amount:
                 self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}     Status  :{Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} Insufficient {ticker} Token Balance {Style.RESET_ALL}"
                 )
                 continue
@@ -1100,30 +1358,43 @@ class OpenFi:
     async def process_option_4(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Borrow{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Borrow{Style.RESET_ALL}                                   "
         )
 
-        for asset_address in [
-                self.WPHRS_CONTRACT_ADDRESS, self.USDC_CONTRACT_ADDRESS, 
-                self.USDT_CONTRACT_ADDRESS, self.WBTC_CONTRACT_ADDRESS, 
-                self.GOLD_CONTRACT_ADDRESS, self.TSLA_CONTRACT_ADDRESS, 
-                self.NVIDIA_CONTRACT_ADDRESS
-            ]:
-            
-            ticker = ( 
-                "WPHRS" if asset_address == self.WPHRS_CONTRACT_ADDRESS else
-                "USDC" if asset_address == self.USDC_CONTRACT_ADDRESS else
-                "USDT" if asset_address == self.USDT_CONTRACT_ADDRESS else 
-                "WBTC" if asset_address == self.WBTC_CONTRACT_ADDRESS else 
-                "GOLD" if asset_address == self.GOLD_CONTRACT_ADDRESS else
-                "TSLA" if asset_address == self.TSLA_CONTRACT_ADDRESS else
-                "NVIDA"
+        for i in range(self.borrow_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ● {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT}Borrow{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {i+1} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}Of{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.borrow_count} {Style.RESET_ALL}                                   "
+            )
+
+            ticker, asset_address, decimals = self.generate_random_option()
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {ticker} {Style.RESET_ALL}                                   "
             )
 
             self.log(
-                f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT}{ticker}{Style.RESET_ALL}                            "
+                f"{Fore.CYAN+Style.BRIGHT}   Amount   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.borrow_amount} {ticker} {Style.RESET_ALL}"
             )
+
+            available_to_borrow = await self.get_available_borrowed_balance(address, asset_address, decimals, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Available:{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {available_to_borrow} {ticker} {Style.RESET_ALL}"
+            )
+
+            if not available_to_borrow or available_to_borrow < self.borrow_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Available {ticker} Borrow Balance Less Than Borrow Amount {Style.RESET_ALL}"
+                )
+                continue
 
             await self.process_perform_borrow(account, address, asset_address, self.borrow_amount, ticker, use_proxy)
             await self.print_timer()
@@ -1131,30 +1402,57 @@ class OpenFi:
     async def process_option_5(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Repay{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Repay{Style.RESET_ALL}                                   "
         )
 
-        for asset_address in [
-                self.WPHRS_CONTRACT_ADDRESS, self.USDC_CONTRACT_ADDRESS, 
-                self.USDT_CONTRACT_ADDRESS, self.WBTC_CONTRACT_ADDRESS, 
-                self.GOLD_CONTRACT_ADDRESS, self.TSLA_CONTRACT_ADDRESS, 
-                self.NVIDIA_CONTRACT_ADDRESS
-            ]:
-            
-            ticker = ( 
-                "WPHRS" if asset_address == self.WPHRS_CONTRACT_ADDRESS else
-                "USDC" if asset_address == self.USDC_CONTRACT_ADDRESS else
-                "USDT" if asset_address == self.USDT_CONTRACT_ADDRESS else 
-                "WBTC" if asset_address == self.WBTC_CONTRACT_ADDRESS else 
-                "GOLD" if asset_address == self.GOLD_CONTRACT_ADDRESS else
-                "TSLA" if asset_address == self.TSLA_CONTRACT_ADDRESS else
-                "NVIDA"
+        for i in range(self.repay_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ● {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT}Repay{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {i+1} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}Of{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.repay_count} {Style.RESET_ALL}                                   "
+            )
+
+            ticker, asset_address, decimals = self.generate_random_option()
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {ticker} {Style.RESET_ALL}                                   "
             )
 
             self.log(
-                f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT}{ticker}{Style.RESET_ALL}                            "
+                f"{Fore.CYAN+Style.BRIGHT}   Amount   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.repay_amount} {ticker} {Style.RESET_ALL}"
             )
+
+            borrowed_balance = await self.get_borrowed_balance(address, asset_address, decimals, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Borrowed :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {borrowed_balance} {ticker} {Style.RESET_ALL}"
+            )
+
+            if not borrowed_balance or borrowed_balance < self.repay_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Borrowed {ticker} Token Balance Less Than Repay Amount {Style.RESET_ALL}"
+                )
+                continue
+
+            balance = await self.get_token_balance(address, asset_address, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Balance  :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {balance} {ticker} {Style.RESET_ALL}"
+            )
+
+            if not balance or balance <= self.repay_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Insufficient {ticker} Token Balance {Style.RESET_ALL}"
+                )
+                continue
 
             await self.process_perform_repay(account, address, asset_address, self.repay_amount, ticker, use_proxy)
             await self.print_timer()
@@ -1162,31 +1460,43 @@ class OpenFi:
     async def process_option_6(self, account: str, address: str, use_proxy: bool):
         self.log(
             f"{Fore.MAGENTA+Style.BRIGHT} ● {Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT}Withdraw{Style.RESET_ALL}                       "
+            f"{Fore.GREEN+Style.BRIGHT}Withdraw{Style.RESET_ALL}                                   "
         )
-        await asyncio.sleep(5)
+        
+        for i in range(self.withdraw_count):
+            self.log(
+                f"{Fore.GREEN+Style.BRIGHT} ● {Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT}Withdraw{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {i+1} {Style.RESET_ALL}"
+                f"{Fore.MAGENTA+Style.BRIGHT}Of{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.withdraw_count} {Style.RESET_ALL}                                   "
+            )
 
-        for asset_address in [
-                self.WPHRS_CONTRACT_ADDRESS, self.USDC_CONTRACT_ADDRESS, 
-                self.USDT_CONTRACT_ADDRESS, self.WBTC_CONTRACT_ADDRESS, 
-                self.GOLD_CONTRACT_ADDRESS, self.TSLA_CONTRACT_ADDRESS, 
-                self.NVIDIA_CONTRACT_ADDRESS
-            ]:
-            
-            ticker = ( 
-                "WPHRS" if asset_address == self.WPHRS_CONTRACT_ADDRESS else
-                "USDC" if asset_address == self.USDC_CONTRACT_ADDRESS else
-                "USDT" if asset_address == self.USDT_CONTRACT_ADDRESS else 
-                "WBTC" if asset_address == self.WBTC_CONTRACT_ADDRESS else 
-                "GOLD" if asset_address == self.GOLD_CONTRACT_ADDRESS else
-                "TSLA" if asset_address == self.TSLA_CONTRACT_ADDRESS else
-                "NVIDA"
+            ticker, asset_address, decimals = self.generate_random_option()
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Assets   :{Style.RESET_ALL}"
+                f"{Fore.BLUE+Style.BRIGHT} {ticker} {Style.RESET_ALL}                                   "
             )
 
             self.log(
-                f"{Fore.MAGENTA+Style.BRIGHT}   > {Style.RESET_ALL}"
-                f"{Fore.BLUE+Style.BRIGHT}{ticker}{Style.RESET_ALL}                            "
+                f"{Fore.CYAN+Style.BRIGHT}   Amount   :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {self.withdraw_amount} {ticker} {Style.RESET_ALL}"
             )
+
+            supplied_balance = await self.get_supplied_balance(address, asset_address, decimals, use_proxy)
+
+            self.log(
+                f"{Fore.CYAN+Style.BRIGHT}   Supplied :{Style.RESET_ALL}"
+                f"{Fore.WHITE+Style.BRIGHT} {supplied_balance} {ticker} {Style.RESET_ALL}"
+            )
+
+            if not supplied_balance or supplied_balance < self.withdraw_amount:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}   Status   :{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} Supplied {ticker} Token Balance Less Than Withdraw Amount {Style.RESET_ALL}"
+                )
+                continue
 
             await self.process_perform_withdraw(account, address, asset_address, self.withdraw_amount, ticker, use_proxy)
             await self.print_timer()
@@ -1194,49 +1504,76 @@ class OpenFi:
     async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool, rotate_proxy: bool):
         is_valid = await self.process_check_connection(address, use_proxy, rotate_proxy)
         if is_valid:
-            web3 = await self.get_web3_with_check(address, use_proxy)
-            if not web3:
+            
+            try:
+                web3 = await self.get_web3_with_check(address, use_proxy)
+            except Exception as e:
                 self.log(
-                    f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
+                    f"{Fore.CYAN+Style.BRIGHT}Status  :{Style.RESET_ALL}"
                     f"{Fore.RED+Style.BRIGHT} Web3 Not Connected {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
                 return
             
             self.used_nonce[address] = web3.eth.get_transaction_count(address, "pending")
 
             if option == 1:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Mint Faucets {Style.RESET_ALL}"
+                )
                 await self.process_option_1(account, address, use_proxy)
 
             elif option == 2:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Deposit PHRS {Style.RESET_ALL}"
+                )
                 await self.process_option_2(account, address, use_proxy)
 
             elif option == 3:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Supply Assets {Style.RESET_ALL}"
+                )
                 await self.process_option_3(account, address, use_proxy)
 
             elif option == 4:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Borrow Assets {Style.RESET_ALL}"
+                )
                 await self.process_option_4(account, address, use_proxy)
 
             elif option == 5:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Repay Assets {Style.RESET_ALL}"
+                )
                 await self.process_option_5(account, address, use_proxy)
 
             elif option == 6:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Withdraw Assets {Style.RESET_ALL}"
+                )
                 await self.process_option_6(account, address, use_proxy)
 
             else:
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Option  :{Style.RESET_ALL}"
+                    f"{Fore.BLUE+Style.BRIGHT} Run All Features {Style.RESET_ALL}"
+                )
                 await self.process_option_1(account, address, use_proxy)
-                await asyncio.sleep(5)
 
                 await self.process_option_2(account, address, use_proxy)
-                await asyncio.sleep(5)
 
                 await self.process_option_3(account, address, use_proxy)
-                await asyncio.sleep(5)
 
                 await self.process_option_4(account, address, use_proxy)
-                await asyncio.sleep(5)
 
                 await self.process_option_5(account, address, use_proxy)
-                await asyncio.sleep(5)
 
                 await self.process_option_6(account, address, use_proxy)
 
@@ -1245,11 +1582,9 @@ class OpenFi:
             with open('accounts.txt', 'r') as file:
                 accounts = [line.strip() for line in file if line.strip()]
 
-            option, use_proxy_choice, rotate_proxy = self.print_question()
+            option, proxy_choice, rotate_proxy = self.print_question()
 
-            use_proxy = False
-            if use_proxy_choice in [1, 2]:
-                use_proxy = True
+            use_proxy = True if proxy_choice == 1 else False
 
             while True:
                 self.clear_terminal()
@@ -1260,7 +1595,7 @@ class OpenFi:
                 )
 
                 if use_proxy:
-                    await self.load_proxies(use_proxy_choice)
+                    await self.load_proxies()
                 
                 separator = "=" * 25
                 for account in accounts:
@@ -1275,7 +1610,7 @@ class OpenFi:
 
                         if not address:
                             self.log(
-                                f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
+                                f"{Fore.CYAN + Style.BRIGHT}Status  :{Style.RESET_ALL}"
                                 f"{Fore.RED + Style.BRIGHT} Invalid Private Key or Library Version Not Supported {Style.RESET_ALL}"
                             )
                             continue
