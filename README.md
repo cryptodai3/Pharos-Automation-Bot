@@ -20,6 +20,7 @@ A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything
 | `bot8.py` | Pharos Name Service BOT         | Auto Mint Random .phrs Domain |
 | `bot9.py` | Grandline BOT         | Auto Claim All Available Badge  |
 | `bot10.py` | R2 Pharos BOT       | Swap and liquidity automation      |
+| `bot11.py` | Bitverse BOT         | Auto trade, Deposit , Withdraw  for Pharos Testnet |
 
 ---
 
@@ -86,6 +87,7 @@ python bot7.py  # Zenith Swap
 python bot8.py  # Pharos Name Service
 python bot9.py  # Grandline
 python bot10.py  # R2 Pharos
+python bot11.py  # Bitverse 
 ```
 
 ---
@@ -153,6 +155,13 @@ python bot10.py  # R2 Pharos
 ✅ Auto Make R2 Earn TX  
 ✅ Multi-account support    
 
+### `bot11.py` — Bitverse  BOT
+🔗 [Bitverse](https://testnet.bitverse.zone/app/)  
+✅ Auto Deposit USDT
+✅Auto Withdraw USDT
+✅Auto Make Random Trade 
+✅ Multi-account support 
+ 
 ---
 
 ## ⚠️ Dependency Notes
