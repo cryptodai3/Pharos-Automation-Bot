@@ -1,6 +1,6 @@
 # ⚙️ Pharos Automation BOT (Multi-Module)
 
-A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything - **Pharos, Gotchipus, OpenFi, Brokex, Faroswap, and AquaFlux** - using just **one wallet, proxy, and config**.
+A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything - **Pharos, Gotchipus, OpenFi, Brokex, Faroswap, AquaFlux, Zenith Swap, Pharos Name Service, Grandline, R2 Pharos, Bitverse, AutoStaking, Spout Finance, and Primuslabs Send** - using just **one wallet, proxy, and config**.
 
 > 🔑 Unified Wallet | 🌍 Proxy Rotation | 🧩 Multi-Module Scripts | 📁 All-in-One Repo
 
@@ -8,19 +8,22 @@ A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything
 
 ## 📦 Included Bots
 
-| File Name | Bot Name           | Description                        |
-| --------- | ------------------ | ---------------------------------- |
-| `bot1.py` | Pharos BOT         | DeFi automation for Pharos Testnet |
-| `bot2.py` | Gotchipus BOT      | NFT minting & wearable claiming    |
-| `bot3.py` | OpenFi BOT         | Lending, borrowing & DeFi services |
-| `bot4.py` | Brokex BOT         | Faucet claim and trade automation  |
-| `bot5.py` | FaroSwap BOT       | Swap and liquidity automation      |
-| `bot6.py` | AquaFlux BOT   | Auto Mint Standard & Premium NFT (need bind twitter)  |
-| `bot7.py` | Zenith Swap BOT      | Swap and liquidity automation    |
-| `bot8.py` | Pharos Name Service BOT         | Auto Mint Random .phrs Domain |
-| `bot9.py` | Grandline BOT         | Auto Claim All Available Badge  |
-| `bot10.py` | R2 Pharos BOT       | Swap and liquidity automation      |
-| `bot11.py` | Bitverse BOT         | Auto trade, Deposit , Withdraw  for Pharos Testnet |
+| File Name   | Bot Name                  | Description                                   |
+| ----------- | ------------------------- | --------------------------------------------- |
+| `bot1.py`   | Pharos BOT                | DeFi automation for Pharos Testnet            |
+| `bot2.py`   | Gotchipus BOT             | NFT minting & wearable claiming               |
+| `bot3.py`   | OpenFi BOT                | Lending, borrowing & DeFi services            |
+| `bot4.py`   | Brokex BOT                | Faucet claim and trade automation             |
+| `bot5.py`   | FaroSwap BOT              | Swap and liquidity automation                 |
+| `bot6.py`   | AquaFlux BOT              | Auto Mint Standard & Premium NFT              |
+| `bot7.py`   | Zenith Swap BOT           | Swap and liquidity automation                 |
+| `bot8.py`   | Pharos Name Service BOT   | Auto Mint Random .phrs Domain                 |
+| `bot9.py`   | Grandline BOT             | Auto Claim All Available Badge                |
+| `bot10.py`  | R2 Pharos BOT             | Swap and liquidity automation                 |
+| `bot11.py`  | Bitverse BOT              | Auto trade, deposit, withdraw                 |
+| `bot12.py`  | AutoStaking BOT           | Automated staking operations & faucet claims  |
+| `bot13.py`  | Spout Finance BOT         | KYC, random trades, and account automation    |
+| `bot14.py`  | Primuslabs Send BOT       | Auto send tips via X Handler (social tipping) |
 
 ---
 
@@ -28,10 +31,11 @@ A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything
 
 ✅ Use one wallet + proxy across all bots  
 ✅ Modular system - run individually or in sequence  
-✅ Covers check-ins, faucets, swaps, NFTs, lending, tips, and more  
+✅ Covers check-ins, faucets, swaps, NFTs, lending, staking, tips, and more  
 ✅ Three proxy modes: Free public, Private, or No Proxy  
 ✅ Auto-rotation for invalid proxies  
 ✅ Multi-account ready for testnet farming  
+✅ NEW: Social Tip Automation via X Handler (Primuslabs Send BOT) 
 
 ---
 
@@ -77,17 +81,20 @@ socks5://127.0.0.1:1080
 
 5. **Run Bots**
 ```bash
-python bot1.py  # Pharos
-python bot2.py  # Gotchipus
-python bot3.py  # OpenFi
-python bot4.py  # Brokex
-python bot5.py  # Faroswap
-python bot6.py  # AquaFlux
-python bot7.py  # Zenith Swap
-python bot8.py  # Pharos Name Service
-python bot9.py  # Grandline
+python bot1.py   # Pharos
+python bot2.py   # Gotchipus
+python bot3.py   # OpenFi
+python bot4.py   # Brokex
+python bot5.py   # Faroswap
+python bot6.py   # AquaFlux
+python bot7.py   # Zenith Swap
+python bot8.py   # Pharos Name Service
+python bot9.py   # Grandline
 python bot10.py  # R2 Pharos
-python bot11.py  # Bitverse 
+python bot11.py  # Bitverse
+python bot12.py  # AutoStaking
+python bot13.py  # Spout Finance
+python bot14.py  # Primuslabs Send
 ```
 
 ---
@@ -161,6 +168,30 @@ python bot11.py  # Bitverse
 ✅Auto Withdraw USDT
 ✅Auto Make Random Trade 
 ✅ Multi-account support 
+
+### `bot12.py` — **AutoStaking BOT**
+🔗 [Auto Staking](https://autostaking.pro/?env=pharos)  
+✅ Automated account info retrieval  
+✅ MockUSD faucet claims  
+✅ Automated staking transactions  
+✅ Proxy rotation support  
+✅ Multi-account ready  
+
+### `bot13.py` — **Spout Finance BOT**
+🔗 [Spout Finance](https://www.spout.finance/app/trade)  
+✅ Auto account info retrieval  
+✅ Run with or without proxy  
+✅ Auto complete KYC  
+✅ Auto random trades  
+✅ Multi-account ready  
+
+### `bot14.py` — **Primuslabs Send BOT**  
+🔗 [Primuslabs Send](https://pay.primuslabs.xyz/send)  
+✅ Auto account info retrieval  
+✅ Proxy options: Free, Private, or None  
+✅ Smart proxy rotation  
+✅ **Auto Send Tip via X Handler (Social Tipping)**  
+✅ Multi-account ready  
  
 ---
 
