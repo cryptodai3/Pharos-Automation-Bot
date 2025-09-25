@@ -82,18 +82,44 @@ socks5://127.0.0.1:1080
 5. **Run Bots**
 ```bash
 python bot1.py   # Pharos
+```
+```bash
 python bot2.py   # Gotchipus
+```
+```bash
 python bot3.py   # OpenFi
+```
+```bash
 python bot4.py   # Brokex
+```
+```bash
 python bot5.py   # Faroswap
+```
+```bash
 python bot6.py   # AquaFlux
+```
+```bash
 python bot7.py   # Zenith Swap
+```
+```bash
 python bot8.py   # Pharos Name Service
+```
+```bash
 python bot9.py   # Grandline
+```
+```bash
 python bot10.py  # R2 Pharos
+```
+```bash
 python bot11.py  # Bitverse
+```
+```bash
 python bot12.py  # AutoStaking
+```
+```bash
 python bot13.py  # Spout Finance
+```
+```bash
 python bot14.py  # Primuslabs Send
 ```
 
