@@ -1,5 +1,9 @@
 # ⚙️ Pharos Automation BOT (Multi-Module)
 
+
+
+and deltt this bot
+
 A one-stop automation suite for the **Pharos Testnet** ecosystem. Run everything - **Pharos, Gotchipus, OpenFi, Brokex, Faroswap, AquaFlux, Zenith Swap, Pharos Name Service, Grandline, R2 Pharos, Bitverse, AutoStaking, Spout Finance, and Primuslabs Send** - using just **one wallet, proxy, and config**.
 
 > 🔑 Unified Wallet | 🌍 Proxy Rotation | 🧩 Multi-Module Scripts | 📁 All-in-One Repo
